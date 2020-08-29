@@ -38,9 +38,7 @@ class SearchPlaceViewController: UIViewController, UISearchBarDelegate, UITableV
         print(dateAndTime ?? "変数〈dateAndTime〉はnilです")
     }
     
-    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
-        print("検索")
-        
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
         // 前回の検索結果の配列を空にする
         placeArray.removeAll()
         addressArray.removeAll()
@@ -48,9 +46,6 @@ class SearchPlaceViewController: UIViewController, UISearchBarDelegate, UITableV
         lonArray.removeAll()
         
         resultsTableView.reloadData()
-        
-        // キーボードをとじる
-        self.view.endEditing(true)
         
         // 検索条件を作成
         let request = MKLocalSearch.Request()
@@ -61,6 +56,11 @@ class SearchPlaceViewController: UIViewController, UISearchBarDelegate, UITableV
         
         let localSearch = MKLocalSearch(request: request)
         localSearch.start(completionHandler: LocalSearchCompHandler(response:error:))
+    }
+    
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        // キーボードをとじる
+        self.view.endEditing(true)
     }
     
     // start(completionHandler:)の引数
