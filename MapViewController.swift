@@ -367,7 +367,7 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
             
             // 配列が空のとき（ロングタップでピンを立てたとき）
             if searchAnnotationArray.isEmpty == true {
-                addPlanVC.address = self.annotation.title ?? ""
+                addPlanVC.place = self.annotation.title ?? ""
                 addPlanVC.lat = self.lat
                 addPlanVC.lon = self.lon
             }
@@ -386,7 +386,7 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
                 
                 // 選択されているピンからタイトルを取得
                 if let selectedSearchAnnotationTitle = selectedSearchAnnotation.title {
-                    addPlanVC.address = selectedSearchAnnotationTitle ?? ""
+                    addPlanVC.place = selectedSearchAnnotationTitle ?? ""
                     addPlanVC.lat = latStr
                     addPlanVC.lon = lonStr
                 }

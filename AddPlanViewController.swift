@@ -13,7 +13,6 @@ class AddPlanViewController: UIViewController, UITableViewDelegate, UITableViewD
     
     var planTitle: String?
     var dateAndTime: String!
-    var address: String?
     var place: String?
     var lon: String = ""
     var lat: String = ""
@@ -53,7 +52,7 @@ class AddPlanViewController: UIViewController, UITableViewDelegate, UITableViewD
             }
             
             if let place = sourceVC.place, let lat = sourceVC.lat, let lon = sourceVC.lon {
-                self.address = place
+                self.place = place
                 self.lat = lat
                 self.lon = lon
             }
@@ -79,12 +78,7 @@ class AddPlanViewController: UIViewController, UITableViewDelegate, UITableViewD
         } else if indexPath.row == 2 {
             let cell = tableView.dequeueReusableCell(withIdentifier: "PlaceCell", for:indexPath) as! PlaceCell
             cell.textLabel?.text = planItem[indexPath.row]
-            
-            // MapVCから住所が渡ってきたとき
-            if let address = self.address {
-                cell.displayPlaceTextField.text = address
-            }
-            // PlanDetailsVCから場所の名前が渡ってきたとき
+
             if let place = self.place {
                 cell.displayPlaceTextField.text = place
             }
