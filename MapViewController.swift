@@ -12,7 +12,7 @@ import CoreLocation
 import MapKit
 
 class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerDelegate, UIGestureRecognizerDelegate, UISearchBarDelegate {
-    
+        
     @IBOutlet weak var mapView: MKMapView!
     var locationManager: CLLocationManager!
     var annotation: MKPointAnnotation = MKPointAnnotation()
@@ -343,13 +343,23 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
     }
     
     @IBAction func tappedFavButton(_ sender: Any) {
+        
         // 配列が空のとき（ロングタップでピンを立てたとき）
         if searchAnnotationArray.isEmpty == true {
+            
             favPlaces.append(annotation.title ?? "")
+            favUserDefaults.set(favPlaces, forKey: "favPlaces")
+            
             favAddresses.append(placeAddressLabel.text ?? "")
+            favUserDefaults.set(favAddresses, forKey: "favAddresses")
+            
             favLats.append(annotation.coordinate.latitude)
+            favUserDefaults.set(favLats, forKey: "favLats")
+            
             favLons.append(annotation.coordinate.longitude)
+            favUserDefaults.set(favLons, forKey: "favLons")
         }
+            
         
         // 配列が空ではないとき（検索でピンを立てたとき）
         else {
@@ -360,10 +370,18 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
             let selectedSearchAnnotation = selectedSearchAnnotationArray[0]
             
             if let selectedSearchAnnotationTitle = selectedSearchAnnotation.title {
+                
                 favPlaces.append(selectedSearchAnnotationTitle ?? "")
+                favUserDefaults.set(favPlaces, forKey: "favPlaces")
+                
                 favAddresses.append(placeAddressLabel.text ?? "")
+                favUserDefaults.set(favAddresses, forKey: "favAddresses")
+                
                 favLats.append(selectedSearchAnnotation.coordinate.latitude)
+                favUserDefaults.set(favLats, forKey: "favLats")
+                
                 favLons.append(selectedSearchAnnotation.coordinate.longitude)
+                favUserDefaults.set(favLons, forKey: "favLons")
             }
         }
     }
