@@ -49,16 +49,20 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
         detailsView.layer.cornerRadius = 20
         
         // 詳細ビューのお気に入りボタン
-        addFavButton.setTitleColor(.white, for: .normal)
+        addFavButton.setTitleColor(UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0), for: .normal)
         addFavButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 15.0)
-        addFavButton.layer.backgroundColor = UIColor.black.cgColor
+        // addFavButton.backgroundColor = UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0)
+        addFavButton.layer.borderColor = UIColor.orange.cgColor
+        addFavButton.layer.borderWidth = 1
         addFavButton.layer.masksToBounds = true
         addFavButton.layer.cornerRadius = 8
         
         // 詳細ビューの予定を追加ボタン
-        addPlanButtonD.setTitleColor(.white, for: .normal)
+        addPlanButtonD.setTitleColor(UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0), for: .normal)
         addPlanButtonD.titleLabel?.font = UIFont.boldSystemFont(ofSize: 15.0)
-        addPlanButtonD.layer.backgroundColor = UIColor.orange.cgColor
+        // addPlanButtonD.backgroundColor = UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0)
+        addPlanButtonD.layer.borderColor = UIColor.orange.cgColor
+        addPlanButtonD.layer.borderWidth = 1
         addPlanButtonD.layer.masksToBounds = true
         addPlanButtonD.layer.cornerRadius = 8
         
@@ -336,6 +340,32 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
         placeSearchBar.text = ""
         // キーボードをとじる
         self.view.endEditing(true)
+    }
+    
+    @IBAction func tappedFavButton(_ sender: Any) {
+        // 配列が空のとき（ロングタップでピンを立てたとき）
+        if searchAnnotationArray.isEmpty == true {
+            favPlaces.append(annotation.title ?? "")
+            favAddresses.append(placeAddressLabel.text ?? "")
+            favLats.append(annotation.coordinate.latitude)
+            favLons.append(annotation.coordinate.longitude)
+        }
+        
+        // 配列が空ではないとき（検索でピンを立てたとき）
+        else {
+            // 選択されているピンを新たな配列に格納
+            let selectedSearchAnnotationArray = mapView.selectedAnnotations
+            
+            // 選択されているピンは1つのため、0番目を取り出す
+            let selectedSearchAnnotation = selectedSearchAnnotationArray[0]
+            
+            if let selectedSearchAnnotationTitle = selectedSearchAnnotation.title {
+                favPlaces.append(selectedSearchAnnotationTitle ?? "")
+                favAddresses.append(placeAddressLabel.text ?? "")
+                favLats.append(selectedSearchAnnotation.coordinate.latitude)
+                favLons.append(selectedSearchAnnotation.coordinate.longitude)
+            }
+        }
     }
     
     func displayDetailsView() {
