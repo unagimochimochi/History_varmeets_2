@@ -28,12 +28,30 @@ class FirstViewController: UIViewController, UITextFieldDelegate {
         idTextField.delegate = self
         nameTextField.delegate = self
         
+        continueButton.tintColor = .white
+        
         fetchExistingIDs()
         
         // ID入力時の判定
         idTextField.addTarget(self, action: #selector(idTextEditingChanged), for: UIControl.Event.editingChanged)
         // 名前入力時の判定
         nameTextField.addTarget(self, action: #selector(nameTextEditingChanged), for: UIControl.Event.editingChanged)
+    }
+    
+    // アプリ起動でレコードを削除（ダッシュボードに表示されないので応急処置）
+    func deleteRecord() {
+        let recordID = CKRecord.ID(recordName: "accountID-sample02")
+        
+        // デフォルトコンテナ（iCloud.com.gmail.mokamokayuuyuu.varmeets）のパブリックデータベースにアクセス
+        let publicDatabase = CKContainer.default().publicCloudDatabase
+        
+        publicDatabase.delete(withRecordID: recordID, completionHandler: {(recordID, error) in
+            if let error = error {
+                print(error)
+                return
+            }
+            print("saple02レコード削除完了")
+        })
     }
     
     // ID入力時の判定
@@ -100,9 +118,7 @@ class FirstViewController: UIViewController, UITextFieldDelegate {
         if let text = textField.text {
             // 入力されていないとき
             if text.count == 0 {
-                check.remove(at: 1)
-                check.insert(false, at: 1)
-                continueButton.isEnabled = false
+                noGood(num: 1)
             }
             
             // 入力されているとき
@@ -119,11 +135,13 @@ class FirstViewController: UIViewController, UITextFieldDelegate {
         check.remove(at: num)
         check.insert(false, at: num)
         continueButton.isEnabled = false
+        continueButton.image = UIImage(named: "ContinueButton_gray")
     }
     
     // 入力中は続行ボタンを無効にする
     func textFieldDidBeginEditing(_ textField: UITextField) {
         continueButton.isEnabled = false
+        continueButton.image = UIImage(named: "ContinueButton_gray")
     }
     
     func textFieldDidEndEditing(_ textField: UITextField) {
@@ -132,6 +150,7 @@ class FirstViewController: UIViewController, UITextFieldDelegate {
         // ID、名前の入力条件をクリアしていれば続行ボタンを有効にする
         if check.contains(false) == false {
             continueButton.isEnabled = true
+            continueButton.image = UIImage(named: "ContinueButton")
         }
         
         if textField == idTextField {
@@ -151,6 +170,7 @@ class FirstViewController: UIViewController, UITextFieldDelegate {
         // ID、パスワードの入力条件をクリアしていればDoneボタンを有効にする
         if check.contains(false) == false {
             continueButton.isEnabled = true
+            continueButton.image = UIImage(named: "ContinueButton")
         }
         
         return true
@@ -159,7 +179,7 @@ class FirstViewController: UIViewController, UITextFieldDelegate {
     // すでに登録されているIDを配列に格納
     func fetchExistingIDs() {
         // ID一覧のRecordName
-        let accountsList = "accounts-accountID"
+        let accountsList = "all-varmeetsIDsList"
         // デフォルトコンテナ（iCloud.com.gmail.mokamokayuuyuu.AccountsTest）のパブリックデータベースにアクセス
         let publicDatabase = CKContainer.default().publicCloudDatabase
         
