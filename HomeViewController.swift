@@ -143,6 +143,17 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         if let indexPath = planTable.indexPathForSelectedRow {
             planTable.deselectRow(at: indexPath, animated: true)
         }
+        
+        // 初回起動時のみFirstVCに遷移
+        let firstUserDefaults = UserDefaults.standard
+        let firstLaunchKey = "firstLaunch"
+        
+        if firstUserDefaults.bool(forKey: firstLaunchKey) {
+            firstUserDefaults.set(false, forKey: firstLaunchKey)
+            firstUserDefaults.synchronize()
+            
+            self.performSegue(withIdentifier: "toFirstVC", sender: nil)
+        }
     }
     
     override func didReceiveMemoryWarning() {
