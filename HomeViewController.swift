@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import CloudKit
 
 class HomeViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
     
@@ -30,6 +31,34 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     @IBOutlet weak var countdownDateAndTimeLabel: UILabel!
     @IBOutlet weak var countdownPlanTitleLabel: UILabel!
     @IBOutlet weak var completeButton: UIButton!
+    
+    @IBAction func createdAccount(sender: UIStoryboardSegue) {
+        if let firstVC = sender.source as? FirstViewController,
+            let id = firstVC.id,
+            let name = firstVC.name {
+            
+            userDefaults.set(id, forKey: "accountID")
+            userDefaults.set(name, forKey: "accountName")
+            
+            let recordID = CKRecord.ID(recordName: "accountID-\(id)")
+            let record = CKRecord(recordType: "Accounts", recordID: recordID)
+            
+            record["accountID"] = id as NSString
+            record["accountName"] = name as NSString
+            
+            // デフォルトコンテナ（iCloud.com.gmail.mokamokayuuyuu.AccountsTest）のパブリックデータベースにアクセス
+            let publicDatabase = CKContainer.default().publicCloudDatabase
+            
+            // レコードを保存
+            publicDatabase.save(record, completionHandler: {(record, error) in
+                if let error = error {
+                    print(error)
+                    return
+                }
+                print("アカウント作成成功")
+            })
+        }
+    }
     
     @IBAction func unwindtoHomeVC(sender: UIStoryboardSegue) {
         // 日時

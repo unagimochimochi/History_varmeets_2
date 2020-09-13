@@ -180,5 +180,14 @@ class FirstViewController: UIViewController, UITextFieldDelegate {
             }
         })
     }
+    
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        guard let button = sender as? UIBarButtonItem, button === continueButton else {
+            return
+        }
+        
+        id = idTextField.text!
+        name = nameTextField.text!
+    }
 
 }
