@@ -10,6 +10,7 @@
 import UIKit
 import CoreLocation
 import MapKit
+import CloudKit
 
 class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerDelegate, UIGestureRecognizerDelegate, UISearchBarDelegate {
         
@@ -68,7 +69,6 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
         
         mapView.delegate = self
         
-        // delegateを登録する
         locationManager = CLLocationManager()
         guard let locationManager = locationManager else {
             return
@@ -77,6 +77,8 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
         
         // 位置情報取得の許可を得る
         locationManager.requestWhenInUseAuthorization()
+        // 位置情報の更新を指示
+        locationManager.startUpdatingLocation()
         
         initMap()
 
@@ -157,17 +159,6 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
         mapView.userTrackingMode = .follow // 現在位置のみ更新する
     }
     
-    // 地図の中心位置の更新関数
-    func updateCurrentPos(_ coordinate: CLLocationCoordinate2D) {
-        var region: MKCoordinateRegion = mapView.region
-        region.center = coordinate
-        mapView.setRegion(region,animated:true)
-    }
-        
-    override func didReceiveMemoryWarning() {
-        super.didReceiveMemoryWarning()
-    }
-    
     // 2点間の距離(m)を算出する
     func calcDistance(_ a: CLLocationCoordinate2D, _ b: CLLocationCoordinate2D) -> CLLocationDistance {
         let aLoc: CLLocation = CLLocation(latitude: a.latitude, longitude: a.longitude)
@@ -178,6 +169,7 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
     
     // 位置情報更新時
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations:[CLLocation]) {
+        recordLocation()
     }
     
     // reverseGeocodeLocation(_:preferredLocale:completionHandler:)の第3引数
@@ -383,6 +375,35 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
                 favLons.append(selectedSearchAnnotation.coordinate.longitude)
                 favUserDefaults.set(favLons, forKey: "favLons")
             }
+        }
+    }
+    
+    func recordLocation() {
+        if let id = myID {
+            // デフォルトコンテナ（iCloud.com.gmail.mokamokayuuyuu.varmeets）のパブリックデータベースにアクセス
+            let publicDatabase = CKContainer.default().publicCloudDatabase
+            
+            // 検索条件を作成
+            let predicate = NSPredicate(format: "accountID == %@", argumentArray: [id])
+            let query = CKQuery(recordType: "Accounts", predicate: predicate)
+            
+            // 検索したレコードの値を更新
+            publicDatabase.perform(query, inZoneWith: nil, completionHandler: {(records, error) in
+                if let error = error {
+                    print("レコードの位置情報更新エラー1: \(error)")
+                    return
+                }
+                for record in records! {
+                    record["currentLocation"] = self.mapView.userLocation.location
+                    publicDatabase.save(record, completionHandler: {(record, error) in
+                        if let error = error {
+                            print("レコードの位置情報更新エラー2: \(error)")
+                            return
+                        }
+                        print("レコードの位置情報更新成功")
+                    })
+                }
+            })
         }
     }
     

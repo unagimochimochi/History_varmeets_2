@@ -8,6 +8,9 @@
 import UIKit
 import CloudKit
 
+var myID: String?
+var myName: String?
+
 class HomeViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
     
     let userDefaults = UserDefaults.standard
@@ -37,8 +40,11 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             let id = firstVC.id,
             let name = firstVC.name {
             
-            userDefaults.set(id, forKey: "accountID")
-            userDefaults.set(name, forKey: "accountName")
+            myID = id
+            myName = name
+            
+            userDefaults.set(id, forKey: "myID")
+            userDefaults.set(name, forKey: "myName")
             
             let recordID = CKRecord.ID(recordName: "accountID-\(id)")
             let record = CKRecord(recordType: "Accounts", recordID: recordID)
@@ -46,18 +52,48 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             record["accountID"] = id as NSString
             record["accountName"] = name as NSString
             
-            // デフォルトコンテナ（iCloud.com.gmail.mokamokayuuyuu.AccountsTest）のパブリックデータベースにアクセス
+            // デフォルトコンテナ（iCloud.com.gmail.mokamokayuuyuu.varmeets）のパブリックデータベースにアクセス
             let publicDatabase = CKContainer.default().publicCloudDatabase
             
             // レコードを保存
             publicDatabase.save(record, completionHandler: {(record, error) in
                 if let error = error {
-                    print(error)
+                    print("新規レコード保存エラー: \(error)")
                     return
                 }
                 print("アカウント作成成功")
             })
+            
+            addNewID()
         }
+    }
+    
+    // all-varmeetsIDsListレコードの配列に新規アカウントのIDを追加
+    func addNewID() {
+        // デフォルトコンテナ（iCloud.com.gmail.mokamokayuuyuu.varmeets）のパブリックデータベースにアクセス
+        let publicDatabase = CKContainer.default().publicCloudDatabase
+        
+        // 検索条件を作成
+        let predicate = NSPredicate(format: "accounts == %@", argumentArray: ["accountID-sample01"])
+        let query = CKQuery(recordType: "AccountsList", predicate: predicate)
+        
+        // 検索したレコードの値を更新
+        publicDatabase.perform(query, inZoneWith: nil, completionHandler: {(records, error) in
+            if let error = error {
+                print("アカウントリスト追加エラー1: \(error)")
+                return
+            }
+            for record in records! {
+                record["accounts"] = ["accountID-sample03"] as [String]
+                publicDatabase.save(record, completionHandler: {(record, error) in
+                    if let error = error {
+                        print("アカウントリスト追加エラー2: \(error)")
+                        return
+                    }
+                    print("アカウントリストに追加成功")
+                })
+            }
+        })
     }
     
     @IBAction func unwindtoHomeVC(sender: UIStoryboardSegue) {
@@ -126,6 +162,16 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
 
         // 1秒ごとに処理
         Timer.scheduledTimer(timeInterval: 1, target: self, selector: #selector(update), userInfo: nil, repeats: true)
+        
+        if userDefaults.object(forKey: "myID") != nil {
+            myID = userDefaults.string(forKey: "myID")
+            print(myID!)
+        }
+        
+        if userDefaults.object(forKey: "myName") != nil {
+            myName = userDefaults.string(forKey: "myName")
+            print(myName!)
+        }
         
         if self.userDefaults.object(forKey: "DateAndTimes") != nil {
             self.dateAndTimes = self.userDefaults.stringArray(forKey: "DateAndTimes")!
