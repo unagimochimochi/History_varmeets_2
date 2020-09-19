@@ -16,7 +16,8 @@ class EditMyProfileViewController: UIViewController, UITextFieldDelegate, UIText
     @IBOutlet weak var nameTextField: UITextField!
     @IBOutlet weak var bioTextView: UITextView!
     
-    var check = false
+    // var check = false
+    var check = [false, true]
     @IBOutlet weak var saveButton: UIBarButtonItem!
     
     override func viewDidLoad() {
@@ -57,30 +58,48 @@ class EditMyProfileViewController: UIViewController, UITextFieldDelegate, UIText
         if let text = textField.text {
             // 入力されていないとき
             if text.count == 0 {
-                check = false
-                saveButton.isEnabled = false
-                saveButton.image = UIImage(named: "SaveButton_gray")
+                noGood(num: 0)
             }
                 
             // 21文字以上のとき
             else if text.count > 20 {
-                check = false
-                saveButton.isEnabled = false
-                saveButton.image = UIImage(named: "SaveButton_gray")
+                noGood(num: 0)
             }
                 
             // 1~20文字のとき
             else {
-                check = true
+                check.remove(at: 0)
+                check.insert(true, at: 0)
             }
         }
+    }
+    
+    // 自己紹介入力時の判定
+    func textViewDidChange(_ textView: UITextView) {
+        // 100文字以下のとき
+        if textView.text.count <= 100 {
+            check.remove(at: 1)
+            check.insert(true, at: 1)
+        }
+        
+        // 101文字以上のとき
+        else {
+            noGood(num: 1)
+        }
+    }
+    
+    func noGood(num: Int) {
+        check.remove(at: num)
+        check.insert(false, at: num)
+        saveButton.isEnabled = false
+        saveButton.image = UIImage(named: "SaveButton_gray")
     }
     
     func textFieldDidEndEditing(_ textField: UITextField) {
         textField.endEditing(true)
         
-        // 名前の入力条件をクリアしていれば保存ボタンを有効にする
-        if check == true {
+        // 名前、自己紹介の入力条件をクリアしていれば保存ボタンを有効にする
+        if check.contains(false) == false {
             saveButton.isEnabled = true
             saveButton.image = UIImage(named: "SaveButton")
             
@@ -97,8 +116,8 @@ class EditMyProfileViewController: UIViewController, UITextFieldDelegate, UIText
     func textFieldShouldReturn(_ textField: UITextField) -> Bool {
         textField.endEditing(true)
         
-        // 名前の入力条件をクリアしていれば保存ボタンを有効にする
-        if check == true {
+        // 名前、自己紹介の入力条件をクリアしていれば保存ボタンを有効にする
+        if check.contains(false) == false {
             saveButton.isEnabled = true
             saveButton.image = UIImage(named: "SaveButton")
             
@@ -126,12 +145,12 @@ class EditMyProfileViewController: UIViewController, UITextFieldDelegate, UIText
         saveButton.isEnabled = false
         saveButton.image = UIImage(named: "SaveButton_gray")
     }
-    
+
     func textViewDidEndEditing(_ textView: UITextView) {
         textView.endEditing(true)
         
-        // 名前の入力条件をクリアしていれば続行ボタンを有効にする
-        if check == true {
+        // 名前、自己紹介の入力条件をクリアしていれば続行ボタンを有効にする
+        if check.contains(false) == false {
             saveButton.isEnabled = true
             saveButton.image = UIImage(named: "SaveButton")
             
@@ -142,15 +161,6 @@ class EditMyProfileViewController: UIViewController, UITextFieldDelegate, UIText
     
     @objc func done() {
         bioTextView.endEditing(true)
-        
-        // 名前の入力条件をクリアしていれば続行ボタンを有効にする
-        if check == true {
-            saveButton.isEnabled = true
-            saveButton.image = UIImage(named: "SaveButton")
-            
-            myName = nameTextField.text!
-            bio = bioTextView.text
-        }
     }
     
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
