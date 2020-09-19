@@ -49,6 +49,7 @@ class MyProfileViewController: UIViewController {
     
     @IBAction func editedMyProfile(sender: UIStoryboardSegue) {
         if let editMyProfileVC = sender.source as? EditMyProfileViewController,
+            let id = myID,
             let name = editMyProfileVC.name,
             let bio = editMyProfileVC.bio {
             
@@ -58,6 +59,32 @@ class MyProfileViewController: UIViewController {
             nameLabel.text = name
             bioLabel.text = bio
             bioLabel.textColor = .black
+            
+            // デフォルトコンテナ（iCloud.com.gmail.mokamokayuuyuu.varmeets）のパブリックデータベースにアクセス
+            let publicDatabase = CKContainer.default().publicCloudDatabase
+            
+            // 検索条件を作成
+            let predicate = NSPredicate(format: "accountID == %@", argumentArray: [id])
+            let query = CKQuery(recordType: "Accounts", predicate: predicate)
+            
+            // 検索したレコードの値を更新
+            publicDatabase.perform(query, inZoneWith: nil, completionHandler: {(records, error) in
+                if let error = error {
+                    print("レコードのプロフィール更新エラー1: \(error)")
+                    return
+                }
+                for record in records! {
+                    record["accountName"] = name as NSString
+                    record["accountBio"] = bio as NSString
+                    publicDatabase.save(record, completionHandler: {(record, error) in
+                        if let error = error {
+                            print("レコードのプロフィール更新エラー2: \(error)")
+                            return
+                        }
+                        print("レコードのプロフィール更新成功")
+                    })
+                }
+            })
         }
     }
 

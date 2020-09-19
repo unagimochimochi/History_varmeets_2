@@ -24,6 +24,16 @@ class EditMyProfileViewController: UIViewController, UITextFieldDelegate, UIText
         
         nameTextField.delegate = self
         bioTextView.delegate = self
+        
+        // bioTextViewのフォント設定（不具合でTimesNewRomanになるのを防ぐ）
+        let stringAttributes: [NSAttributedString.Key : Any] = [.font : UIFont.systemFont(ofSize: 14.0)]
+        bioTextView.attributedText = NSAttributedString(string: "自己紹介（100文字以内）", attributes: stringAttributes)
+        
+        if #available(iOS 13.0, *) {
+            bioTextView.textColor = .systemGray3
+        } else {
+            bioTextView.textColor = .gray
+        }
 
         // 名前入力時の判定
         nameTextField.addTarget(self, action: #selector(nameTextEditingChanged), for: UIControl.Event.editingChanged)
@@ -40,36 +50,6 @@ class EditMyProfileViewController: UIViewController, UITextFieldDelegate, UIText
     
     @IBAction func cancelButton(_ sender: Any) {
         self.dismiss(animated: true, completion: nil)
-    }
-    
-    @IBAction func updateMyProfile(_ sender: Any) {
-        if let id = myID {
-            // デフォルトコンテナ（iCloud.com.gmail.mokamokayuuyuu.varmeets）のパブリックデータベースにアクセス
-            let publicDatabase = CKContainer.default().publicCloudDatabase
-            
-            // 検索条件を作成
-            let predicate = NSPredicate(format: "accountID == %@", argumentArray: [id])
-            let query = CKQuery(recordType: "Accounts", predicate: predicate)
-            
-            // 検索したレコードの値を更新
-            publicDatabase.perform(query, inZoneWith: nil, completionHandler: {(records, error) in
-                if let error = error {
-                    print("レコードのプロフィール更新エラー1: \(error)")
-                    return
-                }
-                for record in records! {
-                    record["accountName"] = myName! as NSString
-                    record["accountBio"] = self.bio! as NSString
-                    publicDatabase.save(record, completionHandler: {(record, error) in
-                        if let error = error {
-                            print("レコードのプロフィール更新エラー2: \(error)")
-                            return
-                        }
-                        print("レコードのプロフィール更新成功")
-                    })
-                }
-            })
-        }
     }
     
     // 名前入力時の判定
@@ -105,6 +85,7 @@ class EditMyProfileViewController: UIViewController, UITextFieldDelegate, UIText
             saveButton.image = UIImage(named: "SaveButton")
             
             myName = nameTextField.text!
+            // 初期テキストが入っていたら変数に空文字を代入
             if bioTextView.text == "自己紹介（100文字以内）" {
                 bio = ""
             } else {
@@ -122,6 +103,7 @@ class EditMyProfileViewController: UIViewController, UITextFieldDelegate, UIText
             saveButton.image = UIImage(named: "SaveButton")
             
             myName = nameTextField.text!
+            // 初期テキストが入っていたら変数に空文字を代入
             if bioTextView.text == "自己紹介（100文字以内）" {
                 bio = ""
             } else {
