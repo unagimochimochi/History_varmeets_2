@@ -4,15 +4,21 @@
 //
 //  Created by 持田侑菜 on 2020/09/19.
 //
+//  キーボードでbioTextViewが隠れないようにする https://i-app-tec.com/ios/textfield-scroll.html
 
 import UIKit
 import CloudKit
 
-class EditMyProfileViewController: UIViewController, UITextFieldDelegate, UITextViewDelegate {
+class EditMyProfileViewController: UIViewController, UITextFieldDelegate, UITextViewDelegate, UIScrollViewDelegate {
     
     var name: String?
     var bio: String?
     
+    @IBOutlet weak var scrollView: UIScrollView!
+    @IBOutlet weak var viewInScrollView: UIView!
+    
+    @IBOutlet weak var icon: UIButton!
+    @IBOutlet weak var header: UIButton!
     @IBOutlet weak var nameTextField: UITextField!
     @IBOutlet weak var bioTextView: UITextView!
     
@@ -22,6 +28,8 @@ class EditMyProfileViewController: UIViewController, UITextFieldDelegate, UIText
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        scrollView.delegate = self
         
         nameTextField.delegate = self
         bioTextView.delegate = self
@@ -41,12 +49,29 @@ class EditMyProfileViewController: UIViewController, UITextFieldDelegate, UIText
         
         // カスタムバー
         let toolbar = UIToolbar(frame: CGRect(x: 0, y: 0, width: UIScreen.main.bounds.width, height: 40))
+        toolbar.sizeToFit()
         let spaceItem = UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: self, action: nil)
         let doneItem = UIBarButtonItem(barButtonSystemItem: .done, target: self, action: #selector(done))
         toolbar.setItems([spaceItem, doneItem], animated: true)
         
         // bioTextViewにはカスタムバーをつける
         bioTextView.inputAccessoryView = toolbar
+        
+        // 表示部分のscrollViewのサイズと位置
+        let screenSize = UIScreen.main.bounds
+        scrollView.frame.size = CGSize(width: screenSize.width, height: screenSize.height)
+        
+        // scrollViewの大きさをスクリーンの縦方向の2倍にする
+        scrollView.contentSize = CGSize(width: screenSize.width, height: (screenSize.height)*2)
+        
+        viewInScrollView.addSubview(header)
+        viewInScrollView.addSubview(icon)
+        viewInScrollView.addSubview(nameTextField)
+        viewInScrollView.addSubview(bioTextView)
+        
+        scrollView.addSubview(viewInScrollView)
+        
+        self.view.addSubview(scrollView)
     }
     
     @IBAction func cancelButton(_ sender: Any) {
@@ -161,6 +186,40 @@ class EditMyProfileViewController: UIViewController, UITextFieldDelegate, UIText
     
     @objc func done() {
         bioTextView.endEditing(true)
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillShow(notification:)), name: UIResponder.keyboardWillShowNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillHide(notification:)), name: UIResponder.keyboardDidHideNotification, object: nil)
+    }
+    
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        
+        NotificationCenter.default.removeObserver(self, name: UIResponder.keyboardWillShowNotification, object: self.view.window)
+        NotificationCenter.default.removeObserver(self, name: UIResponder.keyboardDidHideNotification, object: self.view.window)
+    }
+    
+    @objc func keyboardWillShow(notification: Notification) {
+        let info = notification.userInfo!
+        let keyboardFrame = (info[UIResponder.keyboardFrameEndUserInfoKey] as! NSValue).cgRectValue
+        
+        // bioTextViewの下
+        let bottomBioTextView = bioTextView.frame.origin.y + bioTextView.frame.height
+        // キーボードの上
+        let topKeyboard = UIScreen.main.bounds.height - keyboardFrame.size.height
+        // 重なり
+        let distance = bottomBioTextView - topKeyboard
+        
+        if distance >= 0 {
+            scrollView.contentOffset.y = distance + 50
+        }
+    }
+    
+    @objc func keyboardWillHide(notification: Notification) {
+        scrollView.contentOffset.y = 0
     }
     
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
