@@ -12,6 +12,9 @@ class AddFriendViewController: UIViewController, UISearchBarDelegate, UITableVie
     
     var fetchedFriendID: String?
     var fetchedFriendName: String?
+    var fetchedFriendBio: String?
+    
+    var fetchedRequestedAccounts = [String]()
     
     @IBOutlet weak var friendsSearchBar: UISearchBar!
     @IBOutlet weak var resultsTableView: UITableView!
@@ -21,6 +24,7 @@ class AddFriendViewController: UIViewController, UISearchBarDelegate, UITableVie
         
         friendsSearchBar.delegate = self
         resultsTableView.delegate = self
+        resultsTableView.dataSource = self
     }
     
     @IBAction func cancel(_ sender: Any) {
@@ -30,6 +34,8 @@ class AddFriendViewController: UIViewController, UISearchBarDelegate, UITableVie
     func searchBarTextDidBeginEditing(_ searchBar: UISearchBar) {
         fetchedFriendID = nil
         fetchedFriendName = nil
+        
+        resultsTableView.reloadData()
     }
     
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
@@ -58,12 +64,39 @@ class AddFriendViewController: UIViewController, UISearchBarDelegate, UITableVie
     }
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return 1
+        if fetchedFriendID == nil {
+            return 0
+        } else {
+            return 1
+        }
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "foundFriendCell", for: indexPath)
+        
+        let icon = cell.viewWithTag(1) as! UIImageView
+        icon.layer.borderColor = UIColor.gray.cgColor // 枠線の色
+        icon.layer.borderWidth = 0.5 // 枠線の太さ
+        icon.layer.cornerRadius = icon.bounds.width / 2 // 丸くする
+        icon.layer.masksToBounds = true // 丸の外側を消す
+        
+        if let id = self.fetchedFriendID, let name = self.fetchedFriendName {
+            let nameLabel = cell.viewWithTag(2) as! UILabel
+            nameLabel.text = name
+            
+            let idLabel = cell.viewWithTag(3) as! UILabel
+            idLabel.text = id
+        }
+        
         return cell
+    }
+    
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        tableView.deselectRow(at: indexPath, animated: true)
+    }
+    
+    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+        return 60.0
     }
 
     func fetchFriendInfo(friendID: String) {
@@ -82,6 +115,38 @@ class AddFriendViewController: UIViewController, UISearchBarDelegate, UITableVie
                 self.fetchedFriendID = id
                 self.fetchedFriendName = name
             }
+            
+            if let bio = record?.value(forKey: "accountBio") as? String {
+                self.fetchedFriendBio = bio
+            }
+            
+            if let requested01 = record?.value(forKey: "requestedAccountID_01") as? String,
+                let requested02 = record?.value(forKey: "requestedAccountID_02") as? String,
+                let requested03 = record?.value(forKey: "requestedAccountID_03") as? String {
+                
+                self.fetchedRequestedAccounts.append(requested01)
+                self.fetchedRequestedAccounts.append(requested02)
+                self.fetchedRequestedAccounts.append(requested03)
+            }
         })
     }
+    
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        
+        guard let identifier = segue.identifier else {
+            return
+        }
+        
+        if identifier == "toRequestFriendVC" {
+            let requestFriendVC = segue.destination as! RequestFriendViewController
+            
+            requestFriendVC.friendID = fetchedFriendID
+            requestFriendVC.friendName = fetchedFriendName
+            requestFriendVC.friendBio = fetchedFriendBio
+            
+            requestFriendVC.requestedAccounts = fetchedRequestedAccounts
+        }
+        
+    }
+
 }
