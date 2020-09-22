@@ -18,9 +18,14 @@ class RequestFriendViewController: UIViewController {
 
     @IBOutlet weak var idLabel: UILabel!
     @IBOutlet weak var nameLabel: UILabel!
+    @IBOutlet weak var icon: UIImageView!
+    @IBOutlet weak var header: UIImageView!
     @IBOutlet weak var bioLabel: UILabel!
     
     @IBOutlet weak var requestButton: UIButton!
+    
+    var requestSuccess = false
+    var full = false
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -32,12 +37,19 @@ class RequestFriendViewController: UIViewController {
         
         if let bio = friendBio {
             bioLabel.text = bio
+            bioLabel.textColor = .black
         }
+        
+        // アイコン
+        icon.layer.borderColor = UIColor.gray.cgColor
+        icon.layer.borderWidth = 0.5
+        icon.layer.cornerRadius = icon.bounds.width / 2
+        icon.layer.masksToBounds = true
         
         // 友だち申請ボタン
         requestButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 15.0)
-        requestButton.layer.masksToBounds = true
         requestButton.layer.cornerRadius = 8
+        requestButton.layer.masksToBounds = true
         
         if requestedAccounts.contains(myID!) {
             requestButton.setTitle("申請をキャンセル", for: .normal)
@@ -64,6 +76,7 @@ class RequestFriendViewController: UIViewController {
             publicDatabase.perform(query, inZoneWith: nil, completionHandler: {(records, error) in
                 if let error = error {
                     print("申請エラー1: \(error)")
+                    self.requestSuccess = false
                     return
                 }
                 
@@ -91,19 +104,88 @@ class RequestFriendViewController: UIViewController {
                         // NOがないとき
                         else {
                             print("相手の申請数の上限を超えています")
+                            self.full = true
+                            return
                         }
                     }
                     
                     publicDatabase.save(record, completionHandler: {(record, error) in
                         if let error = error {
                             print("申請エラー2: \(error)")
+                            self.requestSuccess = false
                             return
                         }
                         print("友だち申請／キャンセル成功")
+                        self.requestSuccess = true
                     })
                 }
             })
         }
+        
+        // 1秒後に処理
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: {
+            if self.requestSuccess == true && self.full == false {
+                // 申請キャンセルボタンクリック後
+                if self.requestedAccounts.contains(myID!) {
+                    // 01~03のうち何番目に申請されているか
+                    if let index = self.requestedAccounts.index(of: myID!) {
+                        // 自分のIDがあるところにNOを挿入
+                        self.requestedAccounts.remove(at: index)
+                        self.requestedAccounts.insert("NO", at: index)
+                    }
+                    
+                    // 申請キャンセル成功ダイアログ
+                    let dialog = UIAlertController(title: "申請キャンセル成功", message: "\(self.friendName!)さんへの申請をキャンセルしました。", preferredStyle: .alert)
+                    // OKボタン
+                    dialog.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+                    // ダイアログを表示
+                    self.present(dialog, animated: true, completion: nil)
+                    
+                    // ボタンの見た目をスイッチ
+                    self.requestButton.setTitle("友だち申請", for: .normal)
+                    self.requestButton.setTitleColor(UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0), for: .normal)
+                    self.requestButton.backgroundColor = .white
+                    self.requestButton.layer.borderColor = UIColor.orange.cgColor
+                    self.requestButton.layer.borderWidth = 1
+                }
+                    
+                // 友だち申請ボタンクリック後
+                else {
+                    // 01~03のうち、NOのところに自分のIDを挿入
+                    if self.requestedAccounts[0] == "NO" {
+                        self.requestedAccounts.remove(at: 0)
+                        self.requestedAccounts.insert(myID!, at: 0)
+                    } else if self.requestedAccounts[1] == "NO" {
+                        self.requestedAccounts.remove(at: 1)
+                        self.requestedAccounts.insert(myID!, at: 1)
+                    } else if self.requestedAccounts[2] == "NO" {
+                        self.requestedAccounts.remove(at: 2)
+                        self.requestedAccounts.insert(myID!, at: 2)
+                    }
+                    
+                    // 友だち申請成功ダイアログ
+                    let dialog = UIAlertController(title: "友だち申請成功", message: "\(self.friendName!)さんに友だち申請しました。", preferredStyle: .alert)
+                    // OKボタン
+                    dialog.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+                    // ダイアログを表示
+                    self.present(dialog, animated: true, completion: nil)
+                    
+                    // ボタンの見た目をスイッチ
+                    self.requestButton.setTitle("申請をキャンセル", for: .normal)
+                    self.requestButton.setTitleColor(.white, for: .normal)
+                    self.requestButton.backgroundColor = UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0)
+                }
+            }
+            
+            // 相手が3人以上の申請を抱えているとき
+            if self.full == true {
+                let dialog = UIAlertController(title: "友だち申請失敗", message: "\(self.friendName!)さんは、現在3人から同時に友だち申請されている人気者です。\n申し訳ございませんが、これ以上の申請は受け付けられません。", preferredStyle: .alert)
+                // OKボタン
+                dialog.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+                // ダイアログを表示
+                self.present(dialog, animated: true, completion: nil)
+            }
+        })
     }
     
 }
