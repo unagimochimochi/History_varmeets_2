@@ -11,9 +11,11 @@ import CloudKit
 var myID: String?
 var myName: String?
 
+let userDefaults = UserDefaults.standard
+
 class HomeViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
     
-    let userDefaults = UserDefaults.standard
+    // let userDefaults = UserDefaults.standard
     
     var dateAndTimes = [String]()
     var planTitles = [String]()
@@ -26,7 +28,13 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     var estimatedTimes = [Date]()
     var estimatedTimesSort = [Date]()
     
+    let publicDatabase = CKContainer.default().publicCloudDatabase
+    
+    var fetchedRequest = [String]()
+    
     @IBOutlet weak var planTable: UITableView!
+
+    @IBOutlet weak var myIcon: UIButton!
     
     @IBOutlet weak var countdownView: UIView!
     @IBOutlet weak var countdownViewHeight: NSLayoutConstraint!
@@ -51,9 +59,9 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             
             record["accountID"] = id as NSString
             record["accountName"] = name as NSString
-            
-            // デフォルトコンテナ（iCloud.com.gmail.mokamokayuuyuu.varmeets）のパブリックデータベースにアクセス
-            let publicDatabase = CKContainer.default().publicCloudDatabase
+            record["requestedAccountID_01"] = "NO" as NSString
+            record["requestedAccountID_02"] = "NO" as NSString
+            record["requestedAccountID_03"] = "NO" as NSString
             
             // レコードを保存
             publicDatabase.save(record, completionHandler: {(record, error) in
@@ -63,36 +71,28 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                 }
                 print("アカウント作成成功")
             })
-            
-            addNewID()
         }
     }
     
-    // all-varmeetsIDsListレコードの配列に新規アカウントのIDを追加
-    func addNewID() {
-        // デフォルトコンテナ（iCloud.com.gmail.mokamokayuuyuu.varmeets）のパブリックデータベースにアクセス
-        let publicDatabase = CKContainer.default().publicCloudDatabase
+    func fetchRequest(myID: String) {
+        let recordID = CKRecord.ID(recordName: "accountID-\(myID)")
         
-        // 検索条件を作成
-        let predicate = NSPredicate(format: "accounts == %@", argumentArray: ["accountID-sample01"])
-        let query = CKQuery(recordType: "AccountsList", predicate: predicate)
-        
-        // 検索したレコードの値を更新
-        publicDatabase.perform(query, inZoneWith: nil, completionHandler: {(records, error) in
+        publicDatabase.fetch(withRecordID: recordID, completionHandler: {(record, error) in
             if let error = error {
-                print("アカウントリスト追加エラー1: \(error)")
+                print("友だち申請取得エラー: \(error)")
                 return
             }
-            for record in records! {
-                record["accounts"] = ["accountID-sample03"] as [String]
-                publicDatabase.save(record, completionHandler: {(record, error) in
-                    if let error = error {
-                        print("アカウントリスト追加エラー2: \(error)")
-                        return
-                    }
-                    print("アカウントリストに追加成功")
-                })
+            
+            if let request01 = record?.value(forKey: "requestedAccountID_01") as? String {
+                self.fetchedRequest.append(request01)
             }
+            if let request02 = record?.value(forKey: "requestedAccountID_02") as? String {
+                self.fetchedRequest.append(request02)
+            }
+            if let request03 = record?.value(forKey: "requestedAccountID_03") as? String {
+                self.fetchedRequest.append(request03)
+            }
+            print(self.fetchedRequest)
         })
     }
     
@@ -111,8 +111,8 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             self.estimatedTimes.append((sourceVC1.addPlanTable.cellForRow(at: IndexPath(row: 0, section: 0)) as? DateAndTimeCell)!.estimatedTime)
         }
         
-        self.userDefaults.set(self.dateAndTimes, forKey: "DateAndTimes")
-        self.userDefaults.set(self.estimatedTimes, forKey: "EstimatedTimes")
+        userDefaults.set(self.dateAndTimes, forKey: "DateAndTimes")
+        userDefaults.set(self.estimatedTimes, forKey: "EstimatedTimes")
         
         // 予定タイトル
         guard let sourceVC2 = sender.source as? AddPlanViewController, let planTitle = sourceVC2.planTitle else {
@@ -126,7 +126,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             self.planTitles.append(planTitle)
         }
         
-        self.userDefaults.set(self.planTitles, forKey: "PlanTitles")
+        userDefaults.set(self.planTitles, forKey: "PlanTitles")
         
         // 場所
         guard let sourceVC4 = sender.source as? AddPlanViewController, let place = sourceVC4.place else {
@@ -147,9 +147,9 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             self.lats.append(lat)
         }
         
-        self.userDefaults.set(self.places, forKey: "Places")
-        self.userDefaults.set(self.lons, forKey: "lons")
-        self.userDefaults.set(self.lats, forKey: "lats")
+        userDefaults.set(self.places, forKey: "Places")
+        userDefaults.set(self.lons, forKey: "lons")
+        userDefaults.set(self.lats, forKey: "lats")
         
         self.planTable.reloadData()
     }
@@ -159,6 +159,12 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         
         hiddenCountdown()
         estimatedTimesSort.removeAll()
+        
+        // 左上のアイコン
+        myIcon.layer.borderColor = UIColor.gray.cgColor // 枠線の色
+        myIcon.layer.borderWidth = 1 // 枠線の太さ
+        myIcon.layer.cornerRadius = myIcon.bounds.width / 2 // 丸くする
+        myIcon.layer.masksToBounds = true // 丸の外側を消す
 
         // 1秒ごとに処理
         Timer.scheduledTimer(timeInterval: 1, target: self, selector: #selector(update), userInfo: nil, repeats: true)
@@ -166,6 +172,8 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         if userDefaults.object(forKey: "myID") != nil {
             myID = userDefaults.string(forKey: "myID")
             print(myID!)
+            
+            fetchRequest(myID: myID!)
         }
         
         if userDefaults.object(forKey: "myName") != nil {
@@ -173,35 +181,35 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             print(myName!)
         }
         
-        if self.userDefaults.object(forKey: "DateAndTimes") != nil {
-            self.dateAndTimes = self.userDefaults.stringArray(forKey: "DateAndTimes")!
+        if userDefaults.object(forKey: "DateAndTimes") != nil {
+            self.dateAndTimes = userDefaults.stringArray(forKey: "DateAndTimes")!
         } else {
             self.dateAndTimes = ["日時"]
         }
         
-        if self.userDefaults.object(forKey: "EstimatedTimes") != nil {
-            self.estimatedTimes = self.userDefaults.array(forKey: "EstimatedTimes") as! [Date]
+        if userDefaults.object(forKey: "EstimatedTimes") != nil {
+            self.estimatedTimes = userDefaults.array(forKey: "EstimatedTimes") as! [Date]
         } else {
             // estimatedTimesの初期値に 00:00:00 UTC on 1 January 2001 を設定
             let referenceDate = Date(timeIntervalSinceReferenceDate: 0.0)
             self.estimatedTimes = [referenceDate]
         }
         
-        if self.userDefaults.object(forKey: "PlanTitles") != nil {
-            self.planTitles = self.userDefaults.stringArray(forKey: "PlanTitles")!
+        if userDefaults.object(forKey: "PlanTitles") != nil {
+            self.planTitles = userDefaults.stringArray(forKey: "PlanTitles")!
         } else {
             self.planTitles = ["予定サンプル"]
         }
         
-        if self.userDefaults.object(forKey: "Places") != nil {
-            self.places = self.userDefaults.stringArray(forKey: "Places")!
+        if userDefaults.object(forKey: "Places") != nil {
+            self.places = userDefaults.stringArray(forKey: "Places")!
         } else {
             self.places = ["場所"]
         }
         
-        if self.userDefaults.object(forKey: "lons") != nil {
-            self.lons = self.userDefaults.stringArray(forKey: "lons")!
-            self.lats = self.userDefaults.stringArray(forKey: "lats")!
+        if userDefaults.object(forKey: "lons") != nil {
+            self.lons = userDefaults.stringArray(forKey: "lons")!
+            self.lats = userDefaults.stringArray(forKey: "lats")!
         } else {
             self.lons = ["経度"]
             self.lats = ["緯度"]
@@ -267,22 +275,22 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         if editingStyle == .delete {
             // Delete the row from the data source
             self.dateAndTimes.remove(at: indexPath.row)
-            self.userDefaults.set(self.dateAndTimes, forKey: "DateAndTimes")
+            userDefaults.set(self.dateAndTimes, forKey: "DateAndTimes")
             
             self.estimatedTimes.remove(at: indexPath.row)
-            self.userDefaults.set(self.estimatedTimes, forKey: "EstimatedTimes")
+            userDefaults.set(self.estimatedTimes, forKey: "EstimatedTimes")
             
             self.planTitles.remove(at: indexPath.row)
-            self.userDefaults.set(self.planTitles, forKey: "PlanTitles")
+            userDefaults.set(self.planTitles, forKey: "PlanTitles")
             
             self.places.remove(at: indexPath.row)
-            self.userDefaults.set(self.places, forKey: "Places")
+            userDefaults.set(self.places, forKey: "Places")
             
             self.lons.remove(at: indexPath.row)
-            self.userDefaults.set(self.lons, forKey: "lons")
+            userDefaults.set(self.lons, forKey: "lons")
             
             self.lats.remove(at: indexPath.row)
-            self.userDefaults.set(self.lats, forKey: "lats")
+            userDefaults.set(self.lats, forKey: "lats")
             
             tableView.deleteRows(at: [indexPath], with: .fade)
         }
@@ -454,22 +462,22 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     func remove(index: Int) {
         
         dateAndTimes.remove(at: index)
-        self.userDefaults.set(self.dateAndTimes, forKey: "DateAndTimes")
+        userDefaults.set(self.dateAndTimes, forKey: "DateAndTimes")
         
         self.estimatedTimes.remove(at: index)
-        self.userDefaults.set(self.estimatedTimes, forKey: "EstimatedTimes")
+        userDefaults.set(self.estimatedTimes, forKey: "EstimatedTimes")
         
         self.planTitles.remove(at: index)
-        self.userDefaults.set(self.planTitles, forKey: "PlanTitles")
+        userDefaults.set(self.planTitles, forKey: "PlanTitles")
         
         self.places.remove(at: index)
-        self.userDefaults.set(self.places, forKey: "Places")
+        userDefaults.set(self.places, forKey: "Places")
         
         self.lons.remove(at: index)
-        self.userDefaults.set(self.lons, forKey: "lons")
+        userDefaults.set(self.lons, forKey: "lons")
         
         self.lats.remove(at: index)
-        self.userDefaults.set(self.lats, forKey: "lats")
+        userDefaults.set(self.lats, forKey: "lats")
     }
     
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
