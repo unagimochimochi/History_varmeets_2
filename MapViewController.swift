@@ -50,18 +50,14 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
         detailsView.layer.cornerRadius = 20
         
         // 詳細ビューのお気に入りボタン
-        addFavButton.setTitleColor(UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0), for: .normal)
         addFavButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 15.0)
-        // addFavButton.backgroundColor = UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0)
-        addFavButton.layer.borderColor = UIColor.orange.cgColor
-        addFavButton.layer.borderWidth = 1
         addFavButton.layer.masksToBounds = true
         addFavButton.layer.cornerRadius = 8
         
         // 詳細ビューの予定を追加ボタン
         addPlanButtonD.setTitleColor(UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0), for: .normal)
         addPlanButtonD.titleLabel?.font = UIFont.boldSystemFont(ofSize: 15.0)
-        // addPlanButtonD.backgroundColor = UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0)
+        addPlanButtonD.backgroundColor = .white
         addPlanButtonD.layer.borderColor = UIColor.orange.cgColor
         addPlanButtonD.layer.borderWidth = 1
         addPlanButtonD.layer.masksToBounds = true
@@ -234,6 +230,22 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
         // 配列が空のとき（ロングタップでピンを立てたとき）
         if searchAnnotationArray.isEmpty == true {
             placeNameLabel.text = annotation.title
+            
+            // すでにお気に入りに登録されているとき
+            if favAddresses.contains(annotation.title!) {
+                addFavButton.setTitle("お気に入り解除", for: .normal)
+                addFavButton.setTitleColor(.white, for: .normal)
+                addFavButton.backgroundColor = .orange
+            }
+            
+            // お気に入り登録
+            else {
+                addFavButton.setTitle("お気に入り登録", for: .normal)
+                addFavButton.setTitleColor(UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0), for: .normal)
+                addFavButton.backgroundColor = .white
+                addFavButton.layer.borderColor = UIColor.orange.cgColor
+                addFavButton.layer.borderWidth = 1
+            }
         }
         
         // 配列が空ではないとき（検索でピンを立てたとき）
@@ -251,8 +263,24 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
             let location = CLLocation(latitude: latNum, longitude: lonNum)
             geocoder.reverseGeocodeLocation(location, preferredLocale: nil, completionHandler: GeocodeCompHandler(placemarks:error:))
             
-            if let selectedSearchAnnotationTitle = selectedSearchAnnotation.title {
+            if let selectedSearchAnnotationTitle = selectedSearchAnnotation.title! {
                 placeNameLabel.text = selectedSearchAnnotationTitle
+                
+                // すでにお気に入り登録されているとき
+                if favPlaces.contains(selectedSearchAnnotationTitle) {
+                    addFavButton.setTitle("お気に入り解除", for: .normal)
+                    addFavButton.setTitleColor(.white, for: .normal)
+                    addFavButton.backgroundColor = .orange
+                }
+                
+                // お気に入り登録
+                else {
+                    addFavButton.setTitle("お気に入り登録", for: .normal)
+                    addFavButton.setTitleColor(UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0), for: .normal)
+                    addFavButton.backgroundColor = .white
+                    addFavButton.layer.borderColor = UIColor.orange.cgColor
+                    addFavButton.layer.borderWidth = 1
+                }
             }
         }
     }
@@ -338,21 +366,65 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
         
         // 配列が空のとき（ロングタップでピンを立てたとき）
         if searchAnnotationArray.isEmpty == true {
+            // すでにお気に入り登録されているとき
+            if favAddresses.contains(annotation.title ?? "") {
+                
+                if let index = favAddresses.index(of: annotation.title ?? "") {
+                    
+                    favPlaces.remove(at: index)
+                    favUserDefaults.set(favPlaces, forKey: "favPlaces")
+                    
+                    favAddresses.remove(at: index)
+                    favUserDefaults.set(favAddresses, forKey: "favAddresses")
+                    
+                    favLats.remove(at: index)
+                    favUserDefaults.set(favLats, forKey: "favLats")
+                    
+                    favLons.remove(at: index)
+                    favUserDefaults.set(favLons, forKey: "favLons")
+                    
+                    let dialog = UIAlertController(title: "お気に入り解除", message: "\(annotation.title ?? "")をお気に入りから削除しました。", preferredStyle: .alert)
+                    // OKボタン
+                    dialog.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+                    // ダイアログを表示
+                    self.present(dialog, animated: true, completion: nil)
+                    
+                    // ボタンの見た目をスイッチ
+                    addFavButton.setTitle("お気に入り登録", for: .normal)
+                    addFavButton.setTitleColor(UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0), for: .normal)
+                    addFavButton.backgroundColor = .white
+                    addFavButton.layer.borderColor = UIColor.orange.cgColor
+                    addFavButton.layer.borderWidth = 1
+                }
+            }
             
-            favPlaces.append(annotation.title ?? "")
-            favUserDefaults.set(favPlaces, forKey: "favPlaces")
-            
-            favAddresses.append(placeAddressLabel.text ?? "")
-            favUserDefaults.set(favAddresses, forKey: "favAddresses")
-            
-            favLats.append(annotation.coordinate.latitude)
-            favUserDefaults.set(favLats, forKey: "favLats")
-            
-            favLons.append(annotation.coordinate.longitude)
-            favUserDefaults.set(favLons, forKey: "favLons")
+            // お気に入り登録
+            else {
+                favPlaces.append(annotation.title ?? "")
+                favUserDefaults.set(favPlaces, forKey: "favPlaces")
+                
+                favAddresses.append(placeAddressLabel.text ?? "")
+                favUserDefaults.set(favAddresses, forKey: "favAddresses")
+                
+                favLats.append(annotation.coordinate.latitude)
+                favUserDefaults.set(favLats, forKey: "favLats")
+                
+                favLons.append(annotation.coordinate.longitude)
+                favUserDefaults.set(favLons, forKey: "favLons")
+                
+                let dialog = UIAlertController(title: "お気に入り登録", message: "\(annotation.title ?? "")をお気に入りに追加しました。", preferredStyle: .alert)
+                // OKボタン
+                dialog.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+                // ダイアログを表示
+                self.present(dialog, animated: true, completion: nil)
+                
+                // ボタンの見た目をスイッチ
+                addFavButton.setTitle("お気に入り解除", for: .normal)
+                addFavButton.setTitleColor(.white, for: .normal)
+                addFavButton.backgroundColor = .orange
+            }
         }
             
-        
         // 配列が空ではないとき（検索でピンを立てたとき）
         else {
             // 選択されているピンを新たな配列に格納
@@ -361,19 +433,64 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
             // 選択されているピンは1つのため、0番目を取り出す
             let selectedSearchAnnotation = selectedSearchAnnotationArray[0]
             
-            if let selectedSearchAnnotationTitle = selectedSearchAnnotation.title {
+            if let selectedSearchAnnotationTitle = selectedSearchAnnotation.title ?? "" {
+                // すでにお気に入りに登録されているとき
+                if favPlaces.contains(selectedSearchAnnotationTitle) {
+                    
+                    if let index = favPlaces.index(of: selectedSearchAnnotationTitle) {
+                        
+                        favPlaces.remove(at: index)
+                        favUserDefaults.set(favPlaces, forKey: "favPlaces")
+                        
+                        favAddresses.remove(at: index)
+                        favUserDefaults.set(favAddresses, forKey: "favAddresses")
+                        
+                        favLats.remove(at: index)
+                        favUserDefaults.set(favLats, forKey: "favLats")
+                        
+                        favLons.remove(at: index)
+                        favUserDefaults.set(favLons, forKey: "favLons")
+                        
+                        let dialog = UIAlertController(title: "お気に入り解除", message: "\(selectedSearchAnnotationTitle)をお気に入りから削除しました。", preferredStyle: .alert)
+                        // OKボタン
+                        dialog.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+                        // ダイアログを表示
+                        self.present(dialog, animated: true, completion: nil)
+                        
+                        // ボタンの見た目をスイッチ
+                        addFavButton.setTitle("お気に入り登録", for: .normal)
+                        addFavButton.setTitleColor(UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0), for: .normal)
+                        addFavButton.backgroundColor = .white
+                        addFavButton.layer.borderColor = UIColor.orange.cgColor
+                        addFavButton.layer.borderWidth = 1
+                    }
+                }
                 
-                favPlaces.append(selectedSearchAnnotationTitle ?? "")
-                favUserDefaults.set(favPlaces, forKey: "favPlaces")
-                
-                favAddresses.append(placeAddressLabel.text ?? "")
-                favUserDefaults.set(favAddresses, forKey: "favAddresses")
-                
-                favLats.append(selectedSearchAnnotation.coordinate.latitude)
-                favUserDefaults.set(favLats, forKey: "favLats")
-                
-                favLons.append(selectedSearchAnnotation.coordinate.longitude)
-                favUserDefaults.set(favLons, forKey: "favLons")
+                // お気に入り登録
+                else {
+                    favPlaces.append(selectedSearchAnnotationTitle)
+                    favUserDefaults.set(favPlaces, forKey: "favPlaces")
+                    
+                    favAddresses.append(placeAddressLabel.text ?? "")
+                    favUserDefaults.set(favAddresses, forKey: "favAddresses")
+                    
+                    favLats.append(selectedSearchAnnotation.coordinate.latitude)
+                    favUserDefaults.set(favLats, forKey: "favLats")
+                    
+                    favLons.append(selectedSearchAnnotation.coordinate.longitude)
+                    favUserDefaults.set(favLons, forKey: "favLons")
+                    
+                    let dialog = UIAlertController(title: "お気に入り登録", message: "\(annotation.title ?? "")をお気に入りに追加しました。", preferredStyle: .alert)
+                    // OKボタン
+                    dialog.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+                    // ダイアログを表示
+                    self.present(dialog, animated: true, completion: nil)
+                    
+                    // ボタンの見た目をスイッチ
+                    addFavButton.setTitle("お気に入り解除", for: .normal)
+                    addFavButton.setTitleColor(.white, for: .normal)
+                    addFavButton.backgroundColor = .orange
+                }
             }
         }
     }
