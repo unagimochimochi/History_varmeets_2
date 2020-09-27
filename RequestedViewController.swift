@@ -6,10 +6,12 @@
 //
 
 import UIKit
+import CloudKit
 
 class RequestedViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
     
     var requestedIDs = [String]()
+    var requestedNames = [String]()
 
     @IBOutlet weak var requestedTableView: UITableView!
     
@@ -19,7 +21,35 @@ class RequestedViewController: UIViewController, UITableViewDelegate, UITableVie
         requestedTableView.delegate = self
         requestedTableView.dataSource = self
 
-        print("リクエストID: \(requestedIDs)")
+        // countは0スタート、requestedIDs.countは1スタート
+        var count = 0
+        while count < requestedIDs.count {
+            fetchFriendInfo(friendID: requestedIDs[count])
+            count += 1
+        }
+        
+        // 1秒後
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            self.requestedTableView.reloadData()
+        }
+    }
+    
+    func fetchFriendInfo(friendID: String) {
+        
+        let publicDatabase = CKContainer.default().publicCloudDatabase
+        let recordID = CKRecord.ID(recordName: "accountID-\(friendID)")
+        
+        publicDatabase.fetch(withRecordID: recordID, completionHandler: {(record, error) in
+            
+            if let error = error {
+                print("申請者の情報取得エラー: \(error)")
+                return
+            }
+            
+            if let name = record?.value(forKey: "accountName") as? String {
+                self.requestedNames.append(name)
+            }
+        })
     }
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
@@ -36,8 +66,17 @@ class RequestedViewController: UIViewController, UITableViewDelegate, UITableVie
         icon.layer.cornerRadius = icon.bounds.width / 2 // 丸くする
         icon.layer.masksToBounds = true // 丸の外側を消す
         
-        return cell
+        let nameLabel = cell.viewWithTag(2) as! UILabel
+        if requestedNames.isEmpty {
+            nameLabel.text = "名前"
+        } else {
+            nameLabel.text = requestedNames[indexPath.row]
+        }
         
+        let idLabel = cell.viewWithTag(3) as! UILabel
+        idLabel.text = requestedIDs[indexPath.row]
+        
+        return cell
     }
     
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
