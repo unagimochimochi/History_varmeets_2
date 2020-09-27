@@ -93,6 +93,14 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                 self.fetchedRequest.append(request03)
             }
             print(self.fetchedRequest)
+            
+            // 申請者のIDのみ配列に残す
+            while self.fetchedRequest.contains("NO") {
+                if let index = self.fetchedRequest.index(of: "NO") {
+                    self.fetchedRequest.remove(at: index)
+                }
+            }
+            print(self.fetchedRequest)
         })
     }
     
@@ -169,10 +177,19 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         // 1秒ごとに処理
         Timer.scheduledTimer(timeInterval: 1, target: self, selector: #selector(update), userInfo: nil, repeats: true)
         
+        // 1秒後に処理
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            // 友だち申請されている場合
+            if self.fetchedRequest.isEmpty == false {
+                self.performSegue(withIdentifier: "toRequestedVC", sender: nil)
+            }
+        }
+        
         if userDefaults.object(forKey: "myID") != nil {
             myID = userDefaults.string(forKey: "myID")
             print(myID!)
             
+            // 友だち申請をデータベースから取得
             fetchRequest(myID: myID!)
         }
         
@@ -493,6 +510,11 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             planDetailsVC.place = self.places[(self.planTable.indexPathForSelectedRow?.row)!]
             planDetailsVC.lonStr = self.lons[(self.planTable.indexPathForSelectedRow?.row)!]
             planDetailsVC.latStr = self.lats[(self.planTable.indexPathForSelectedRow?.row)!]
+        }
+        
+        if identifier == "toRequestedVC" {
+            let requestedVC = segue.destination as! RequestedViewController
+            requestedVC.requestedIDs = self.fetchedRequest
         }
     }
     
