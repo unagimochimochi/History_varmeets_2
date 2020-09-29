@@ -32,6 +32,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     
     var fetchedRequest = [String]()
     var friendIDs = [String]()
+    var friendIDsToMe = [String]()
     
     @IBOutlet weak var planTable: UITableView!
 
@@ -107,45 +108,51 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             
             let requestedIDs = requestedVC.requestedIDs
             
-            var count = 0
-            while count < requestedIDs.count {
+            friendIDsToMe = friendIDs
+            
+            var count1 = 0
+            while count1 < requestedIDs.count {
                 
-                // 自分のレコードの検索条件を作成
-                let predicate1 = NSPredicate(format: "accountID == %@", argumentArray: [myID!])
-                let query1 = CKQuery(recordType: "Accounts", predicate: predicate1)
-                
-                // 友だちの検索条件を作成
-                // let predicate2 = NSPredicate(format: "accountID == %@", argumentArray: [requestedIDs[count]])
-                // let query2 = CKQuery(recordType: "Accounts", predicate: predicate2)
-                
-                if (requestedVC.requestedTableView.cellForRow(at: IndexPath(row: count, section: 0)) as? RequestedCell)!.approval == true {
-                    
+                if (requestedVC.requestedTableView.cellForRow(at: IndexPath(row: count1, section: 0)) as? RequestedCell)!.approval == true {
                     // 友だち一覧に申請者を追加
-                    var friendIDsToMe = friendIDs
-                    friendIDsToMe.append(requestedIDs[count])
-                    
-                    // 検索したレコードの値を更新
-                    publicDatabase.perform(query1, inZoneWith: nil, completionHandler: {(records, error) in
-                        if let error = error {
-                            print("友だち一覧更新エラー1: \(error)")
-                            return
-                        }
-                        
-                        for record in records! {
-                            record["friends"] = friendIDsToMe as [String]
-                            self.publicDatabase.save(record, completionHandler: {(record, error) in
-                                if let error = error {
-                                    print("友だち一覧更新エラー2: \(error)")
-                                    return
-                                }
-                                print("友だち一覧更新成功")
-                            })
-                        }
-                    })
+                    friendIDsToMe.append(requestedIDs[count1])
                 }
                 
-                count += 1
+                count1 += 1
             }
+                
+            // 自分のレコードの検索条件を作成
+            let predicate1 = NSPredicate(format: "accountID == %@", argumentArray: [myID!])
+            let query1 = CKQuery(recordType: "Accounts", predicate: predicate1)
+                
+            // 検索したレコードの値を更新
+            publicDatabase.perform(query1, inZoneWith: nil, completionHandler: {(records, error) in
+                if let error = error {
+                    print("友だち一覧更新エラー1: \(error)")
+                    return
+                }
+                        
+                for record in records! {
+                    
+                    record["friends"] = self.friendIDsToMe as [String]
+                    record["requestedAccountID_01"] = "NO" as NSString
+                    record["requestedAccountID_02"] = "NO" as NSString
+                    record["requestedAccountID_03"] = "NO" as NSString
+                    
+                    self.publicDatabase.save(record, completionHandler: {(record, error) in
+                        if let error = error {
+                            print("友だち一覧更新エラー2: \(error)")
+                            return
+                        }
+                        print("友だち一覧更新成功")
+                    })
+                }
+            })
+            
+            // 友だちの検索条件を作成
+            // let predicate2 = NSPredicate(format: "accountID == %@", argumentArray: [requestedIDs[count2]])
+            // let query2 = CKQuery(recordType: "Accounts", predicate: predicate2)
+            
         }
     }
     
