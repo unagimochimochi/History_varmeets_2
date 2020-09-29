@@ -87,6 +87,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                     print("アカウントリスト追加エラー1: \(error)")
                     return
                 }
+                
                 for record in records! {
                     record["accounts"] = existingIDs as [String]
                     self.publicDatabase.save(record, completionHandler: {(record, error) in
@@ -100,7 +101,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             })
         }
     }
-    /*
+    
     @IBAction func becameFriends(sender: UIStoryboardSegue) {
         if let requestedVC = sender.source as? RequestedViewController {
             
@@ -109,17 +110,45 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             var count = 0
             while count < requestedIDs.count {
                 
-                let predicate = NSPredicate(format: "accountID == %@", argumentArray: [requestedIDs[count]])
-                let query = CKQuery(recordType: "Accounts", predicate: predicate)
+                // 自分のレコードの検索条件を作成
+                let predicate1 = NSPredicate(format: "accountID == %@", argumentArray: [myID!])
+                let query1 = CKQuery(recordType: "Accounts", predicate: predicate1)
+                
+                // 友だちの検索条件を作成
+                // let predicate2 = NSPredicate(format: "accountID == %@", argumentArray: [requestedIDs[count]])
+                // let query2 = CKQuery(recordType: "Accounts", predicate: predicate2)
                 
                 if (requestedVC.requestedTableView.cellForRow(at: IndexPath(row: count, section: 0)) as? RequestedCell)!.approval == true {
-                    // 友だち追加処理
+                    
+                    // 友だち一覧に申請者を追加
+                    var friendIDsToMe = friendIDs
+                    friendIDsToMe.append(requestedIDs[count])
+                    
+                    // 検索したレコードの値を更新
+                    publicDatabase.perform(query1, inZoneWith: nil, completionHandler: {(records, error) in
+                        if let error = error {
+                            print("友だち一覧更新エラー1: \(error)")
+                            return
+                        }
+                        
+                        for record in records! {
+                            record["friends"] = friendIDsToMe as [String]
+                            self.publicDatabase.save(record, completionHandler: {(record, error) in
+                                if let error = error {
+                                    print("友だち一覧更新エラー2: \(error)")
+                                    return
+                                }
+                                print("友だち一覧更新成功")
+                            })
+                        }
+                    })
                 }
+                
                 count += 1
             }
         }
     }
-    */
+    
     @IBAction func unwindtoHomeVC(sender: UIStoryboardSegue) {
         // 日時
         guard let sourceVC1 = sender.source as? AddPlanViewController, let dateAndTime = sourceVC1.dateAndTime else {
@@ -206,9 +235,9 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             print(myID!)
             
             // 友だち申請をデータベースから取得
-            fetchRequest(myID: myID!)
+            fetchRequest(id: myID!)
             // 友だち一覧をデータベースから取得
-            fetchFriendIDs(myID: myID!)
+            fetchFriendIDs(id: myID!)
         }
         
         if userDefaults.object(forKey: "myName") != nil {
@@ -474,8 +503,8 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         planTable.reloadData()
     }
     
-    func fetchRequest(myID: String) {
-        let recordID = CKRecord.ID(recordName: "accountID-\(myID)")
+    func fetchRequest(id: String) {
+        let recordID = CKRecord.ID(recordName: "accountID-\(id)")
         
         publicDatabase.fetch(withRecordID: recordID, completionHandler: {(record, error) in
             if let error = error {
@@ -504,8 +533,8 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         })
     }
     
-    func fetchFriendIDs(myID: String) {
-        let recordID = CKRecord.ID(recordName: "accountID-\(myID)")
+    func fetchFriendIDs(id: String) {
+        let recordID = CKRecord.ID(recordName: "accountID-\(id)")
         
         publicDatabase.fetch(withRecordID: recordID, completionHandler: {(record, error) in
             if let error = error {
