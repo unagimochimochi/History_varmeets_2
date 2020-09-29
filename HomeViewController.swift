@@ -31,6 +31,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     let publicDatabase = CKContainer.default().publicCloudDatabase
     
     var fetchedRequest = [String]()
+    var friendIDs = [String]()
     
     @IBOutlet weak var planTable: UITableView!
 
@@ -71,39 +72,54 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                 }
                 print("アカウント作成成功")
             })
+            
+            var existingIDs = firstVC.existingIDs
+            
+            // 検索条件を作成
+            let predicate = NSPredicate(format: "toSearch IN %@", ["all-varmeetsIDs"])
+            let query = CKQuery(recordType: "AccountsList", predicate: predicate)
+            
+            existingIDs.append("accountID-\(id)")
+            
+            // 検索したレコードの値を更新
+            publicDatabase.perform(query, inZoneWith: nil, completionHandler: {(records, error) in
+                if let error = error {
+                    print("アカウントリスト追加エラー1: \(error)")
+                    return
+                }
+                for record in records! {
+                    record["accounts"] = existingIDs as [String]
+                    self.publicDatabase.save(record, completionHandler: {(record, error) in
+                        if let error = error {
+                            print("アカウントリスト追加エラー2: \(error)")
+                            return
+                        }
+                    })
+                }
+                print("アカウントリスト追加成功")
+            })
         }
     }
-    
-    func fetchRequest(myID: String) {
-        let recordID = CKRecord.ID(recordName: "accountID-\(myID)")
-        
-        publicDatabase.fetch(withRecordID: recordID, completionHandler: {(record, error) in
-            if let error = error {
-                print("友だち申請取得エラー: \(error)")
-                return
-            }
+    /*
+    @IBAction func becameFriends(sender: UIStoryboardSegue) {
+        if let requestedVC = sender.source as? RequestedViewController {
             
-            if let request01 = record?.value(forKey: "requestedAccountID_01") as? String {
-                self.fetchedRequest.append(request01)
-            }
-            if let request02 = record?.value(forKey: "requestedAccountID_02") as? String {
-                self.fetchedRequest.append(request02)
-            }
-            if let request03 = record?.value(forKey: "requestedAccountID_03") as? String {
-                self.fetchedRequest.append(request03)
-            }
-            print(self.fetchedRequest)
+            let requestedIDs = requestedVC.requestedIDs
             
-            // 申請者のIDのみ配列に残す
-            while self.fetchedRequest.contains("NO") {
-                if let index = self.fetchedRequest.index(of: "NO") {
-                    self.fetchedRequest.remove(at: index)
+            var count = 0
+            while count < requestedIDs.count {
+                
+                let predicate = NSPredicate(format: "accountID == %@", argumentArray: [requestedIDs[count]])
+                let query = CKQuery(recordType: "Accounts", predicate: predicate)
+                
+                if (requestedVC.requestedTableView.cellForRow(at: IndexPath(row: count, section: 0)) as? RequestedCell)!.approval == true {
+                    // 友だち追加処理
                 }
+                count += 1
             }
-            print(self.fetchedRequest)
-        })
+        }
     }
-    
+    */
     @IBAction func unwindtoHomeVC(sender: UIStoryboardSegue) {
         // 日時
         guard let sourceVC1 = sender.source as? AddPlanViewController, let dateAndTime = sourceVC1.dateAndTime else {
@@ -191,6 +207,8 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             
             // 友だち申請をデータベースから取得
             fetchRequest(myID: myID!)
+            // 友だち一覧をデータベースから取得
+            fetchFriendIDs(myID: myID!)
         }
         
         if userDefaults.object(forKey: "myName") != nil {
@@ -454,6 +472,56 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         }
         
         planTable.reloadData()
+    }
+    
+    func fetchRequest(myID: String) {
+        let recordID = CKRecord.ID(recordName: "accountID-\(myID)")
+        
+        publicDatabase.fetch(withRecordID: recordID, completionHandler: {(record, error) in
+            if let error = error {
+                print("友だち申請取得エラー: \(error)")
+                return
+            }
+            
+            if let request01 = record?.value(forKey: "requestedAccountID_01") as? String {
+                self.fetchedRequest.append(request01)
+            }
+            if let request02 = record?.value(forKey: "requestedAccountID_02") as? String {
+                self.fetchedRequest.append(request02)
+            }
+            if let request03 = record?.value(forKey: "requestedAccountID_03") as? String {
+                self.fetchedRequest.append(request03)
+            }
+            print(self.fetchedRequest)
+            
+            // 申請者のIDのみ配列に残す
+            while self.fetchedRequest.contains("NO") {
+                if let index = self.fetchedRequest.index(of: "NO") {
+                    self.fetchedRequest.remove(at: index)
+                }
+            }
+            print(self.fetchedRequest)
+        })
+    }
+    
+    func fetchFriendIDs(myID: String) {
+        let recordID = CKRecord.ID(recordName: "accountID-\(myID)")
+        
+        publicDatabase.fetch(withRecordID: recordID, completionHandler: {(record, error) in
+            if let error = error {
+                print("友だち一覧取得エラー: \(error)")
+                return
+            }
+            
+            if let friendIDs = record?.value(forKey: "friends") as? [String] {
+                for friendID in friendIDs {
+                    self.friendIDs.append(friendID)
+                }
+                print(self.friendIDs)
+            } else {
+                print("友だち0人")
+            }
+        })
     }
     
     func displayCountdown() {
