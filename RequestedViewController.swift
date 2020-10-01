@@ -20,7 +20,8 @@ class RequestedViewController: UIViewController, UITableViewDelegate, UITableVie
         
         requestedTableView.delegate = self
         requestedTableView.dataSource = self
-
+        
+        // 申請の数だけfetchを繰り返す
         // countは0スタート、requestedIDs.countは1スタート
         var count = 0
         while count < requestedIDs.count {
@@ -58,7 +59,7 @@ class RequestedViewController: UIViewController, UITableViewDelegate, UITableVie
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         
-        let cell = tableView.dequeueReusableCell(withIdentifier: "friendCell", for: indexPath)
+        let cell = tableView.dequeueReusableCell(withIdentifier: "RequestedCell", for: indexPath) as! RequestedCell
         
         let icon = cell.viewWithTag(1) as! UIImageView
         icon.layer.borderColor = UIColor.gray.cgColor // 枠線の色
@@ -82,4 +83,5 @@ class RequestedViewController: UIViewController, UITableViewDelegate, UITableVie
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
         return 60.0
     }
+    
 }
