@@ -24,19 +24,21 @@ class FriendsViewController: UIViewController, UITableViewDataSource, UITableVie
     let publicDatabase = CKContainer.default().publicCloudDatabase
     
     var friendIDs: [String] = [] {
-        // 配列が更新されたら処理
+        // 友だちのID一覧が取得できたら友だちの情報を取得
         didSet {
             fetchFriendInfo()
             // 1秒後に処理
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                self.friendsTableView.reloadData()
-            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: {
+                if self.friendNames.isEmpty == false {
+                    self.friendsTableView.reloadData()
+                }
+            })
         }
     }
 
     var friendNames = [String]()
     var friendBios = [String]()
-    
+        
     override func viewDidLoad() {
         super.viewDidLoad()        
     }
