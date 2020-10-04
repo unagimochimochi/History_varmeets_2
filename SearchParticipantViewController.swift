@@ -41,12 +41,11 @@ class SearchParticipantViewController: UIViewController, UISearchBarDelegate, UI
     func fetchFriends() {
         
         let dispatchGroup = DispatchGroup()
-        let dispatchQueue1 = DispatchQueue(label: "queue1")
-        let dispatchQueue2 = DispatchQueue(label: "queue2")
+        let dispatchQueue = DispatchQueue(label: "queue")
         
         // 1つ目の処理
         dispatchGroup.enter()
-        dispatchQueue1.async(group: dispatchGroup) {
+        dispatchQueue.async(group: dispatchGroup, qos: .unspecified, flags: [], execute: {
             
             print("1つ目の処理入った")
             
@@ -70,11 +69,12 @@ class SearchParticipantViewController: UIViewController, UISearchBarDelegate, UI
                     print("1つ目の処理抜けた")
                 }
             })
-        }
+        })
+        
         
         // 2つ目の処理
         dispatchGroup.enter()
-        dispatchQueue2.async(group: dispatchGroup) {
+        dispatchQueue.async(group: dispatchGroup, qos: .unspecified, flags: [], execute: {
             
             print("2つ目の処理入った")
             
@@ -109,7 +109,7 @@ class SearchParticipantViewController: UIViewController, UISearchBarDelegate, UI
                     print("2つ目の処理抜けた")
                 }
             }
-        }
+        })
         
         // 両方の dispatchGroup.leave() が呼ばれたとき
         dispatchGroup.notify(queue: .main) {
