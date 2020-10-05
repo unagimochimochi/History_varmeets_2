@@ -21,8 +21,8 @@ class SearchParticipantViewController: UIViewController, UISearchBarDelegate, UI
     
     var timer1: Timer!
     var timer2: Timer!
-    var checkCount1: Int?
-    var checkCount2: Int?
+    var checkCount1 = 0
+    var checkCount2 = 0
     
     @IBAction func cancel(_ sender: Any) {
         self.dismiss(animated: true, completion: nil)
@@ -47,50 +47,48 @@ class SearchParticipantViewController: UIViewController, UISearchBarDelegate, UI
     }
     
     @objc func update1() {
-        
         print("update1")
         // friendIDs配列がデータベースのフレンド一覧と同じ要素数になったら
-        if let friendsNum = checkCount1 {
-            
-            if friendIDs.count == friendsNum {
-                print("friendIDs: \(friendIDs.count)")
-                print("friendIDs: \(friendIDs)")
-                // タイマー1を止める
-                if let workingTimer = timer1 {
-                    workingTimer.invalidate()
-                }
-                
-                // 各々の友だちの情報を取得
-                fetchFriendInfo()
-                
-                // タイマー2スタート
-                timer2 = Timer.scheduledTimer(timeInterval: 0.5, target: self, selector: #selector(update2), userInfo: nil, repeats: true)
+        if friendIDs.count == checkCount1 {
+            // タイマー1を止める
+            if let workingTimer = timer1 {
+                workingTimer.invalidate()
             }
+            
+            // 各々の友だちの情報を取得
+            var count = 0
+            while count < friendIDs.count {
+                if checkCount2 == count {
+                    fetchFriendInfo(count)
+                    count += 1
+                }
+            }
+
+            // タイマー2スタート
+            timer2 = Timer.scheduledTimer(timeInterval: 0.5, target: self, selector: #selector(update2), userInfo: nil, repeats: true)
         }
     }
     
     @objc func update2() {
         print("update2")
         // 繰り返し処理のカウントがfriendIDs配列と同じ数になったら（すべての友だちの情報を取得し終えたら）
-        if let finishNum = checkCount2 {
-            if finishNum >= friendIDs.count {
-                // タイマー2を止める
-                if let workingTimer = timer2 {
-                    workingTimer.invalidate()
-                }
-                
-                // UI更新
-                friendsTableView.reloadData()
+        if checkCount2 == friendIDs.count {
+            // タイマー2を止める
+            if let workingTimer = timer2 {
+                workingTimer.invalidate()
             }
+            
+            // UI更新
+            friendsTableView.reloadData()
         }
     }
     
     func fetchFriends() {
         
         // 自分のレコードから友だち一覧を取得
-        let recordID1 = CKRecord.ID(recordName: "accountID-\(myID!)")
+        let recordID = CKRecord.ID(recordName: "accountID-\(myID!)")
         
-        publicDatabase.fetch(withRecordID: recordID1, completionHandler: {(record, error) in
+        publicDatabase.fetch(withRecordID: recordID, completionHandler: {(record, error) in
             
             if let error = error {
                 print("友だち一覧取得エラー: \(error)")
@@ -109,41 +107,28 @@ class SearchParticipantViewController: UIViewController, UISearchBarDelegate, UI
         })
     }
     
-    func fetchFriendInfo() {
+    func fetchFriendInfo(_ count: Int) {
         
-        print("fetchFriendInfo()が呼ばれた")
-        
-        var count = 0
-        while count < friendIDs.count {
+        let recordID = CKRecord.ID(recordName: "accountID-\(self.friendIDs[count])")
+
+        publicDatabase.fetch(withRecordID: recordID, completionHandler: {(record, error) in
             
-            let recordID2 = CKRecord.ID(recordName: "accountID-\(friendIDs[count])")
+            if let error = error {
+                print("\(count + 1)番目の友だちの情報取得エラー: \(error)")
+                return
+            }
             
-            count += 1
-            print("今から\(count)番目の友だちの情報を取得します")
+            if let name = record?.value(forKey: "accountName") as? String {
+                self.friendNames.append(name)
+                self.checkCount2 = count + 1
+            }
             
-            publicDatabase.fetch(withRecordID: recordID2, completionHandler: {(record, error) in
-                
-                if let error = error {
-                    print("友だちの情報取得エラー: \(error)")
-                    return
-                }
-                
-                if let name = record?.value(forKey: "accountName") as? String {
-                    self.friendNames.append(name)
-                    print(name)
-                    if self.friendNames.count == count {
-                        self.checkCount2 = count
-                        print(count)
-                    }
-                }
-                
-                if let bio = record?.value(forKey: "accountBio") as? String {
-                    self.friendBios.append(bio)
-                } else {
-                    self.friendBios.append("自己紹介が未入力です")
-                }
-            })
-        }
+            if let bio = record?.value(forKey: "accountBio") as? String {
+                self.friendBios.append(bio)
+            } else {
+                self.friendBios.append("自己紹介が未入力です")
+            }
+        })
     }
     
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
