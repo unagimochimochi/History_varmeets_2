@@ -21,6 +21,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     var planTitles = [String]()
     // var participantImgs = [UIImage]()
     var participantNames = [String]()
+    var numberOfParticipants = [Int]()
     var places = [String]()
     var lons = [String]()
     var lats = [String]()
@@ -33,6 +34,8 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     var fetchedRequest = [String]()
     var friendIDs = [String]()
     var friendIDsToMe = [String]()
+    
+    var timer: Timer!
     
     @IBOutlet weak var planTable: UITableView!
 
@@ -237,6 +240,26 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         
         userDefaults.set(self.planTitles, forKey: "PlanTitles")
         
+        // 参加者
+        guard let sourceVC3 = sender.source as? AddPlanViewController else {
+            return
+        }
+        
+        let rep = sourceVC3.participantNames[0]
+        let number = sourceVC3.participantNames.count
+        
+        if let selectedIndexPath = self.planTable.indexPathForSelectedRow {
+            self.participantNames[selectedIndexPath.row] = rep
+            self.numberOfParticipants[selectedIndexPath.row] = number
+            
+        } else {
+            self.participantNames.append(rep)
+            self.numberOfParticipants.append(number)
+        }
+        
+        userDefaults.set(self.participantNames, forKey: "ParticipantNames")
+        userDefaults.set(self.numberOfParticipants, forKey: "NumberOfParticipants")
+        
         // 場所
         guard let sourceVC4 = sender.source as? AddPlanViewController, let place = sourceVC4.place else {
             return
@@ -274,9 +297,6 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         myIcon.layer.borderWidth = 1 // 枠線の太さ
         myIcon.layer.cornerRadius = myIcon.bounds.width / 2 // 丸くする
         myIcon.layer.masksToBounds = true // 丸の外側を消す
-
-        // 1秒ごとに処理
-        Timer.scheduledTimer(timeInterval: 1, target: self, selector: #selector(update), userInfo: nil, repeats: true)
         
         // 1秒後に処理
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
@@ -321,6 +341,18 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             self.planTitles = ["予定サンプル"]
         }
         
+        if userDefaults.object(forKey: "ParticipantNames") != nil {
+            self.participantNames = userDefaults.stringArray(forKey: "ParticipantNames")!
+        } else {
+            self.participantNames = ["参加者"]
+        }
+        
+        if userDefaults.object(forKey: "NumberOfParticipants") != nil {
+            self.numberOfParticipants = userDefaults.array(forKey: "NumberOfParticipants") as! [Int]
+        } else {
+            self.numberOfParticipants = [0]
+        }
+        
         if userDefaults.object(forKey: "Places") != nil {
             self.places = userDefaults.stringArray(forKey: "Places")!
         } else {
@@ -334,9 +366,6 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             self.lons = ["経度"]
             self.lats = ["緯度"]
         }
-        
-        // self.participantImgs = ["FriendsNoimg"]
-        self.participantNames = ["参加者"]
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -347,6 +376,9 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             planTable.deselectRow(at: indexPath, animated: true)
         }
         
+        // 1秒ごとに処理
+        timer = Timer.scheduledTimer(timeInterval: 1, target: self, selector: #selector(update), userInfo: nil, repeats: true)
+        
         // 初回起動時のみFirstVCに遷移
         let firstUserDefaults = UserDefaults.standard
         let firstLaunchKey = "firstLaunch"
@@ -356,6 +388,14 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             firstUserDefaults.synchronize()
             
             self.performSegue(withIdentifier: "toFirstVC", sender: nil)
+        }
+    }
+    
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        
+        if let workingTimer = timer {
+            workingTimer.invalidate()
         }
     }
     
@@ -373,13 +413,16 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         
         let planTitleLabel = cell.viewWithTag(2) as! UILabel
         planTitleLabel.text = self.planTitles[indexPath.row]
-        /*
-         // let participantImageView = cell.viewWithTag(3) as! UIImageView
-         // participantImageView.image = img
+        
+        let participantIcon = cell.viewWithTag(3) as! UIImageView
+        participantIcon.layer.borderColor = UIColor.gray.cgColor // 枠線の色
+        participantIcon.layer.borderWidth = 1 // 枠線の太さ
+        participantIcon.layer.cornerRadius = participantIcon.bounds.width / 2 // 丸くする
+        participantIcon.layer.masksToBounds = true // 丸の外側を消す
          
-         let participantLabel = cell.viewWithTag(4) as! UILabel
-         participantLabel.text = self.participantNames[indexPath.row]
-         */
+        let participantLabel = cell.viewWithTag(4) as! UILabel
+        participantLabel.text = self.participantNames[indexPath.row]
+        
         let placeLabel = cell.viewWithTag(5) as! UILabel
         placeLabel.text = self.places[indexPath.row]
         print("経度: \(self.lons[indexPath.row]), 緯度: \(self.lats[indexPath.row])")
@@ -392,26 +435,9 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     }
     
     func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
+        
         if editingStyle == .delete {
-            // Delete the row from the data source
-            self.dateAndTimes.remove(at: indexPath.row)
-            userDefaults.set(self.dateAndTimes, forKey: "DateAndTimes")
-            
-            self.estimatedTimes.remove(at: indexPath.row)
-            userDefaults.set(self.estimatedTimes, forKey: "EstimatedTimes")
-            
-            self.planTitles.remove(at: indexPath.row)
-            userDefaults.set(self.planTitles, forKey: "PlanTitles")
-            
-            self.places.remove(at: indexPath.row)
-            userDefaults.set(self.places, forKey: "Places")
-            
-            self.lons.remove(at: indexPath.row)
-            userDefaults.set(self.lons, forKey: "lons")
-            
-            self.lats.remove(at: indexPath.row)
-            userDefaults.set(self.lats, forKey: "lats")
-            
+            remove(index: indexPath.row)
             tableView.deleteRows(at: [indexPath], with: .fade)
         }
     }
@@ -639,6 +665,12 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         
         self.planTitles.remove(at: index)
         userDefaults.set(self.planTitles, forKey: "PlanTitles")
+        
+        self.participantNames.remove(at: index)
+        userDefaults.set(self.participantNames, forKey: "ParticipantNames")
+        
+        self.numberOfParticipants.remove(at: index)
+        userDefaults.set(self.numberOfParticipants, forKey: "NumberOfParticipants")
         
         self.places.remove(at: index)
         userDefaults.set(self.places, forKey: "Places")
