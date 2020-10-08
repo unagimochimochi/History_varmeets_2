@@ -13,6 +13,8 @@ class AddPlanViewController: UIViewController, UITableViewDelegate, UITableViewD
     
     var planTitle: String?
     var dateAndTime: String!
+    var participantIDs = [String]()
+    var participantNames = [String]()
     var place: String?
     var lon: String = ""
     var lat: String = ""
@@ -29,7 +31,7 @@ class AddPlanViewController: UIViewController, UITableViewDelegate, UITableViewD
     // 保存ボタン
     @IBOutlet weak var saveButton: UIBarButtonItem!
     
-    var planItem = ["日時","参加者","場所","共有開始","通知"]
+    var planItem = ["日時","参加者","場所"]
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -40,6 +42,30 @@ class AddPlanViewController: UIViewController, UITableViewDelegate, UITableViewD
         
         if let planTitle = self.planTitle {
             self.planTitleTextField.text = planTitle
+        }
+    }
+    
+    // 参加者を選択画面からの巻き戻し
+    @IBAction func unwindToAddPlanVCFromSearchParticipantVC(sender: UIStoryboardSegue) {
+        if let sourceVC = sender.source as? SearchParticipantViewController {
+            // 日時をすでに出力していたとき
+            if let dateAndTime = sourceVC.dateAndTime {
+                self.dateAndTime = dateAndTime
+            }
+            
+            var count = 0
+            
+            while count < sourceVC.friendIDs.count {
+                if sourceVC.checkmark[count] == true {
+                    self.participantIDs.append(sourceVC.friendIDs[count])
+                    self.participantNames.append(sourceVC.friendNames[count])
+                }
+                count += 1
+            }
+            
+            if count == sourceVC.friendIDs.count {
+                addPlanTable.reloadData()
+            }
         }
     }
     
@@ -62,6 +88,7 @@ class AddPlanViewController: UIViewController, UITableViewDelegate, UITableViewD
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath:IndexPath) -> UITableViewCell {
+        
         if indexPath.row == 0 {
             let cell = tableView.dequeueReusableCell(withIdentifier: "DateAndTimeCell", for:indexPath) as! DateAndTimeCell
             cell.textLabel?.text = planItem[indexPath.row]
@@ -69,25 +96,72 @@ class AddPlanViewController: UIViewController, UITableViewDelegate, UITableViewD
             
             return cell
             
-        } else if indexPath.row == 1 {
-            let cell = tableView.dequeueReusableCell(withIdentifier: "ParticipantCell", for:indexPath) // as UITableViewCell
+        }
+        
+        else if indexPath.row == 1 {
+            let cell = tableView.dequeueReusableCell(withIdentifier: "ParticipantCell", for:indexPath) as! ParticipantCell
             cell.textLabel?.text = planItem[indexPath.row]
+            
+            if participantIDs.count == 0 {
+                cell.hidden1()
+                cell.hidden2()
+                cell.hidden3()
+                cell.hiddenOthers()
+            }
+            
+            else if participantIDs.count == 1 {
+                cell.display1()
+                cell.hidden2()
+                cell.hidden3()
+                cell.hiddenOthers()
+                
+                cell.participant1Name.text = participantNames[0]
+            }
+            
+            else if participantIDs.count == 2 {
+                cell.display1()
+                cell.display2()
+                cell.hidden3()
+                cell.hiddenOthers()
+                
+                cell.participant1Name.text = participantNames[0]
+                cell.participant2Name.text = participantNames[1]
+            }
+            
+            else if participantIDs.count == 3 {
+                cell.display1()
+                cell.display2()
+                cell.display3()
+                cell.hiddenOthers()
+                
+                cell.participant1Name.text = participantNames[0]
+                cell.participant2Name.text = participantNames[1]
+                cell.participant3Name.text = participantNames[2]
+            }
+            
+            else {
+                cell.display1()
+                cell.display2()
+                cell.display3()
+                cell.displayOthers()
+                
+                cell.participant1Name.text = participantNames[0]
+                cell.participant2Name.text = participantNames[1]
+                cell.participant3Name.text = participantNames[2]
+                cell.othersLabel.text = "他\(participantNames.count - 3)人"
+            }
             
             return cell
             
-        } else if indexPath.row == 2 {
+        }
+        
+        else {
             let cell = tableView.dequeueReusableCell(withIdentifier: "PlaceCell", for:indexPath) as! PlaceCell
             cell.textLabel?.text = planItem[indexPath.row]
 
             if let place = self.place {
                 cell.displayPlaceTextField.text = place
             }
-            
-            return cell
-            
-        } else {
-            let cell = tableView.dequeueReusableCell(withIdentifier: "ParticipantCell", for:indexPath) // as UITableViewCell
-            cell.textLabel?.text = planItem[indexPath.row]
             
             return cell
         }
@@ -121,10 +195,17 @@ class AddPlanViewController: UIViewController, UITableViewDelegate, UITableViewD
     override func prepare(for segue: UIStoryboardSegue, sender: Any!) {
         
         if let identifier = segue.identifier {
+            
             if identifier == "toSearchPlaceVC" {
                 let searchPlaceVC = segue.destination as! SearchPlaceViewController
                 self.dateAndTime = (addPlanTable.cellForRow(at: IndexPath(row: 0, section: 0)) as? DateAndTimeCell)?.displayDateAndTimeTextField.text ?? ""
                 searchPlaceVC.dateAndTime = self.dateAndTime
+            }
+            
+            if identifier == "toSearchParticipantVC" {
+                let searchParticipantVC = segue.destination as! SearchParticipantViewController
+                self.dateAndTime = (addPlanTable.cellForRow(at: IndexPath(row: 0, section: 0)) as? DateAndTimeCell)?.displayDateAndTimeTextField.text ?? ""
+                searchParticipantVC.dateAndTime = self.dateAndTime
             }
         }
         

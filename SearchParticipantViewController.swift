@@ -24,6 +24,11 @@ class SearchParticipantViewController: UIViewController, UISearchBarDelegate, UI
     var checkCount1 = 0
     var checkCount2 = 0
     
+    var checkmark = [Bool]()
+    
+    // AddPlanVCで日時が出力されている場合、一時的に保存
+    var dateAndTime: String?
+    
     @IBAction func cancel(_ sender: Any) {
         self.dismiss(animated: true, completion: nil)
     }
@@ -44,6 +49,18 @@ class SearchParticipantViewController: UIViewController, UISearchBarDelegate, UI
         
         // タイマー1スタート
         timer1 = Timer.scheduledTimer(timeInterval: 0.5, target: self, selector: #selector(update1), userInfo: nil, repeats: true)
+    }
+    
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        
+        if let workingTimer1 = timer1 {
+            workingTimer1.invalidate()
+        }
+        
+        if let workingTimer2 = timer2 {
+            workingTimer2.invalidate()
+        }
     }
     
     @objc func update1() {
@@ -102,6 +119,7 @@ class SearchParticipantViewController: UIViewController, UISearchBarDelegate, UI
                 for friendID in friendIDs {
                     print("success!")
                     self.friendIDs.append(friendID)
+                    self.checkmark.append(false)
                 }
             }
         })
@@ -143,6 +161,12 @@ class SearchParticipantViewController: UIViewController, UISearchBarDelegate, UI
         
         let cell = tableView.dequeueReusableCell(withIdentifier: "FriendCell", for:indexPath)
         
+        if checkmark[indexPath.row] == true {
+            cell.accessoryType = .checkmark
+        } else {
+            cell.accessoryType = .none
+        }
+        
         let icon = cell.viewWithTag(1) as! UIImageView
         icon.layer.borderColor = UIColor.gray.cgColor // 枠線の色
         icon.layer.borderWidth = 0.5 // 枠線の太さ
@@ -156,6 +180,15 @@ class SearchParticipantViewController: UIViewController, UISearchBarDelegate, UI
         idLabel.text = friendIDs[indexPath.row]
         
         return cell
+    }
+    
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        
+        tableView.deselectRow(at: indexPath, animated: true)
+        
+        // チェック状態を反転してUI更新
+        checkmark[indexPath.row] = !checkmark[indexPath.row]
+        friendsTableView.reloadData()
     }
     
     func tableView(_ table: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
