@@ -216,8 +216,8 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             return
         }
         
-        // 予定ID生成
-        let planID = generatePlanID(length: 8)
+        // 10桁の予定ID生成
+        let planID = generatePlanID(length: 10)
         planIDs.append(planID)
         
         userDefaults.set(planIDs, forKey: "PlanIDs")
@@ -316,6 +316,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         let record = CKRecord(recordType: "Plans", recordID: recordID)
             
         record["planID"] = planID as NSString
+        record["authorID"] = myID! as NSString
             
         if let savePlanTitle = toSavePlanTitle {
             record["planTitle"] = savePlanTitle as NSString
@@ -765,11 +766,12 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         
         if identifier == "toPlanDetails" {
             let planDetailsVC = segue.destination as! PlanDetailsViewController
-            planDetailsVC.dateAndTime = self.dateAndTimes[(self.planTable.indexPathForSelectedRow?.row)!]
-            planDetailsVC.planTitle = self.planTitles[(self.planTable.indexPathForSelectedRow?.row)!]
-            planDetailsVC.place = self.places[(self.planTable.indexPathForSelectedRow?.row)!]
-            planDetailsVC.lonStr = self.lons[(self.planTable.indexPathForSelectedRow?.row)!]
-            planDetailsVC.latStr = self.lats[(self.planTable.indexPathForSelectedRow?.row)!]
+            planDetailsVC.planID = planIDs[(planTable.indexPathForSelectedRow?.row)!]
+            planDetailsVC.dateAndTime = dateAndTimes[(planTable.indexPathForSelectedRow?.row)!]
+            planDetailsVC.planTitle = planTitles[(planTable.indexPathForSelectedRow?.row)!]
+            planDetailsVC.place = places[(planTable.indexPathForSelectedRow?.row)!]
+            planDetailsVC.lonStr = lons[(planTable.indexPathForSelectedRow?.row)!]
+            planDetailsVC.latStr = lats[(planTable.indexPathForSelectedRow?.row)!]
         }
         
         if identifier == "toRequestedVC" {

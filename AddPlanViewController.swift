@@ -11,6 +11,8 @@ import UIKit
 
 class AddPlanViewController: UIViewController, UITableViewDelegate, UITableViewDataSource, UITextFieldDelegate {
     
+    var planID: String?
+    
     var planTitle: String?
     var dateAndTime: String!
     var participantIDs = [String]()
