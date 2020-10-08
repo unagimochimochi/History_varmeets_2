@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import MapKit
 import CloudKit
 
 var myID: String?
@@ -15,11 +16,10 @@ let userDefaults = UserDefaults.standard
 
 class HomeViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
     
-    // let userDefaults = UserDefaults.standard
+    var planIDs = [String]()
     
     var dateAndTimes = [String]()
     var planTitles = [String]()
-    // var participantImgs = [UIImage]()
     var participantNames = [String]()
     var numberOfParticipants = [Int]()
     var places = [String]()
@@ -49,6 +49,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     @IBOutlet weak var completeButton: UIButton!
     
     @IBAction func createdAccount(sender: UIStoryboardSegue) {
+        
         if let firstVC = sender.source as? FirstViewController,
             let id = firstVC.id,
             let name = firstVC.name {
@@ -107,6 +108,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     }
     
     @IBAction func becameFriends(sender: UIStoryboardSegue) {
+        
         if let requestedVC = sender.source as? RequestedViewController {
             
             let requestedIDs = requestedVC.requestedIDs
@@ -209,81 +211,140 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     }
     
     @IBAction func unwindtoHomeVC(sender: UIStoryboardSegue) {
-        // 日時
-        guard let sourceVC1 = sender.source as? AddPlanViewController, let dateAndTime = sourceVC1.dateAndTime else {
+        
+        guard let addPlanVC = sender.source as? AddPlanViewController else {
             return
         }
         
-        if let selectedIndexPath = self.planTable.indexPathForSelectedRow {
-            self.dateAndTimes[selectedIndexPath.row] = dateAndTime
-            self.estimatedTimes[selectedIndexPath.row] = (sourceVC1.addPlanTable.cellForRow(at: IndexPath(row: 0, section: 0)) as? DateAndTimeCell)!.estimatedTime
-            
-        } else {
-            self.dateAndTimes.append(dateAndTime)
-            self.estimatedTimes.append((sourceVC1.addPlanTable.cellForRow(at: IndexPath(row: 0, section: 0)) as? DateAndTimeCell)!.estimatedTime)
-        }
+        // 予定ID生成
+        let planID = generatePlanID(length: 8)
+        planIDs.append(planID)
         
-        userDefaults.set(self.dateAndTimes, forKey: "DateAndTimes")
-        userDefaults.set(self.estimatedTimes, forKey: "EstimatedTimes")
+        userDefaults.set(planIDs, forKey: "PlanIDs")
+        
+        // 日時
+        var toSaveEstimatedTime: Date?
+        
+        if let dateAndTime = addPlanVC.dateAndTime {
+            
+            toSaveEstimatedTime = (addPlanVC.addPlanTable.cellForRow(at: IndexPath(row: 0, section: 0)) as? DateAndTimeCell)!.estimatedTime
+            
+            if let selectedIndexPath = planTable.indexPathForSelectedRow {
+                dateAndTimes[selectedIndexPath.row] = dateAndTime
+                estimatedTimes[selectedIndexPath.row] = (addPlanVC.addPlanTable.cellForRow(at: IndexPath(row: 0, section: 0)) as? DateAndTimeCell)!.estimatedTime
+                
+            } else {
+                dateAndTimes.append(dateAndTime)
+                estimatedTimes.append((addPlanVC.addPlanTable.cellForRow(at: IndexPath(row: 0, section: 0)) as? DateAndTimeCell)!.estimatedTime)
+            }
+            
+            userDefaults.set(dateAndTimes, forKey: "DateAndTimes")
+            userDefaults.set(estimatedTimes, forKey: "EstimatedTimes")
+        }
         
         // 予定タイトル
-        guard let sourceVC2 = sender.source as? AddPlanViewController, let planTitle = sourceVC2.planTitle else {
-            return
-        }
+        var toSavePlanTitle: String?
         
-        if let selectedIndexPath = self.planTable.indexPathForSelectedRow {
-            self.planTitles[selectedIndexPath.row] = planTitle
+        if let planTitle = addPlanVC.planTitle {
             
-        } else {
-            self.planTitles.append(planTitle)
+            toSavePlanTitle = planTitle
+            
+            if let selectedIndexPath = planTable.indexPathForSelectedRow {
+                planTitles[selectedIndexPath.row] = planTitle
+                
+            } else {
+                planTitles.append(planTitle)
+            }
+            
+            userDefaults.set(planTitles, forKey: "PlanTitles")
         }
-        
-        userDefaults.set(self.planTitles, forKey: "PlanTitles")
         
         // 参加者
-        guard let sourceVC3 = sender.source as? AddPlanViewController else {
-            return
-        }
+        var toSaveParticipantIDs = [String]()
         
-        let rep = sourceVC3.participantNames[0]
-        let number = sourceVC3.participantNames.count
-        
-        if let selectedIndexPath = self.planTable.indexPathForSelectedRow {
-            self.participantNames[selectedIndexPath.row] = rep
-            self.numberOfParticipants[selectedIndexPath.row] = number
+        if addPlanVC.participantNames.isEmpty == false {
             
-        } else {
-            self.participantNames.append(rep)
-            self.numberOfParticipants.append(number)
+            toSaveParticipantIDs = addPlanVC.participantIDs
+            
+            let rep = addPlanVC.participantNames[0]
+            let number = addPlanVC.participantNames.count
+            
+            if let selectedIndexPath = planTable.indexPathForSelectedRow {
+                participantNames[selectedIndexPath.row] = rep
+                numberOfParticipants[selectedIndexPath.row] = number
+                
+            } else {
+                participantNames.append(rep)
+                numberOfParticipants.append(number)
+            }
+            
+            userDefaults.set(participantNames, forKey: "ParticipantNames")
+            userDefaults.set(numberOfParticipants, forKey: "NumberOfParticipants")
         }
-        
-        userDefaults.set(self.participantNames, forKey: "ParticipantNames")
-        userDefaults.set(self.numberOfParticipants, forKey: "NumberOfParticipants")
         
         // 場所
-        guard let sourceVC4 = sender.source as? AddPlanViewController, let place = sourceVC4.place else {
-            return
-        }
+        var toSavePlaceName: String?
+        var toSaveLocation: CLLocation?
         
-        let lon = sourceVC4.lon
-        let lat = sourceVC4.lat
-        
-        if let selectedIndexPath = self.planTable.indexPathForSelectedRow {
-            self.places[selectedIndexPath.row] = place
-            self.lons[selectedIndexPath.row] = lon
-            self.lats[selectedIndexPath.row] = lat
+        if let place = addPlanVC.place {
             
-        } else {
-            self.places.append(place)
-            self.lons.append(lon)
-            self.lats.append(lat)
+            let lat = addPlanVC.lat
+            let lon = addPlanVC.lon
+            
+            toSavePlaceName = place
+            toSaveLocation = CLLocation(latitude: Double(lat)!, longitude: Double(lon)!)
+            
+            if let selectedIndexPath = planTable.indexPathForSelectedRow {
+                places[selectedIndexPath.row] = place
+                lons[selectedIndexPath.row] = lon
+                lats[selectedIndexPath.row] = lat
+                
+            } else {
+                places.append(place)
+                lons.append(lon)
+                lats.append(lat)
+            }
+            
+            userDefaults.set(places, forKey: "Places")
+            userDefaults.set(lons, forKey: "lons")
+            userDefaults.set(lats, forKey: "lats")
         }
-        
-        userDefaults.set(self.places, forKey: "Places")
-        userDefaults.set(self.lons, forKey: "lons")
-        userDefaults.set(self.lats, forKey: "lats")
         
         self.planTable.reloadData()
+        
+        let recordID = CKRecord.ID(recordName: "planID-\(planID)")
+        let record = CKRecord(recordType: "Plans", recordID: recordID)
+            
+        record["planID"] = planID as NSString
+            
+        if let savePlanTitle = toSavePlanTitle {
+            record["planTitle"] = savePlanTitle as NSString
+        }
+            
+        if let saveEstimatedTime = toSaveEstimatedTime {
+            record["estimatedTime"] = saveEstimatedTime as Date
+        }
+            
+        if toSaveParticipantIDs.isEmpty == false {
+            record["participantIDs"] = toSaveParticipantIDs as [String]
+        }
+            
+        if let savePlaceName = toSavePlaceName {
+            record["placeName"] = savePlaceName as NSString
+        }
+            
+        if let saveLocation = toSaveLocation {
+            record["placeLatAndLon"] = saveLocation
+        }
+            
+        // レコードを保存
+        publicDatabase.save(record, completionHandler: {(record, error) in
+            if let error = error {
+                print("予定保存エラー: \(error)")
+                return
+            }
+            print("予定保存成功")
+        })
     }
     
     override func viewDidLoad() {
@@ -319,6 +380,12 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         if userDefaults.object(forKey: "myName") != nil {
             myName = userDefaults.string(forKey: "myName")
             print(myName!)
+        }
+        
+        if userDefaults.object(forKey: "PlanIDs") != nil {
+            self.planIDs = userDefaults.stringArray(forKey: "PlanIDs")!
+        } else {
+            self.planIDs = ["sample00"]
         }
         
         if userDefaults.object(forKey: "DateAndTimes") != nil {
@@ -635,6 +702,11 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         })
     }
     
+    func generatePlanID(length: Int) -> String {
+        let characters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+        return String((0 ..< length).map { _ in characters.randomElement()! })
+    }
+    
     func displayCountdown() {
         
         countdownViewHeight.constant = 200
@@ -656,6 +728,9 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     }
     
     func remove(index: Int) {
+        
+        planIDs.remove(at: index)
+        userDefaults.set(self.planIDs, forKey: "PlanIDs")
         
         dateAndTimes.remove(at: index)
         userDefaults.set(self.dateAndTimes, forKey: "DateAndTimes")
