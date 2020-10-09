@@ -32,8 +32,8 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     let publicDatabase = CKContainer.default().publicCloudDatabase
     
     var fetchedRequest = [String]()
-    var friendIDs = [String]()
-    var friendIDsToMe = [String]()
+    var friendIDs = [String]() // 起動時の友だち一覧
+    var friendIDsToMe = [String]() // friendIDs配列に申請許可者を追加した一覧
     
     var timer: Timer!
     
@@ -341,11 +341,18 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         // レコードを保存
         publicDatabase.save(record, completionHandler: {(record, error) in
             if let error = error {
-                print("予定保存エラー: \(error)")
+                print("Plansタイプ予定保存エラー: \(error)")
                 return
             }
-            print("予定保存成功")
+            print("Plansタイプ予定保存成功")
         })
+        
+        // 予定作成者のデータベースに予定IDを追加
+        addPlanIDToDatabase(accountID: myID!, newPlanID: planID)
+        // 参加者のデータベースに予定IDを追加
+        for participantID in toSaveParticipantIDs {
+            addPlanIDToDatabase(accountID: participantID, newPlanID: planID)
+        }
     }
     
     override func viewDidLoad() {
@@ -386,7 +393,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         if userDefaults.object(forKey: "PlanIDs") != nil {
             self.planIDs = userDefaults.stringArray(forKey: "PlanIDs")!
         } else {
-            self.planIDs = ["sample00"]
+            self.planIDs = ["samplePlan"]
         }
         
         if userDefaults.object(forKey: "DateAndTimes") != nil {
@@ -654,9 +661,11 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     }
     
     func fetchRequest(id: String) {
+        
         let recordID = CKRecord.ID(recordName: "accountID-\(id)")
         
         publicDatabase.fetch(withRecordID: recordID, completionHandler: {(record, error) in
+            
             if let error = error {
                 print("友だち申請取得エラー: \(error)")
                 return
@@ -684,9 +693,11 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     }
     
     func fetchFriendIDs(id: String) {
+        
         let recordID = CKRecord.ID(recordName: "accountID-\(id)")
         
         publicDatabase.fetch(withRecordID: recordID, completionHandler: {(record, error) in
+            
             if let error = error {
                 print("友だち一覧取得エラー: \(error)")
                 return
@@ -699,6 +710,61 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                 print(self.friendIDs)
             } else {
                 print("友だち0人")
+            }
+        })
+    }
+    
+    func addPlanIDToDatabase(accountID: String, newPlanID: String) {
+        
+        var planIDsOnDatabase = [String]()
+        
+        let recordID = CKRecord.ID(recordName: "accountID-\(accountID)")
+        
+        publicDatabase.fetch(withRecordID: recordID, completionHandler: {(record, error) in
+            
+            if let error = error {
+                print("予定ID一覧取得エラー: \(error)")
+                return
+            }
+            
+            if let planIDs = record?.value(forKey: "planIDs") as? [String] {
+                
+                for planID in planIDs {
+                    planIDsOnDatabase.append(planID)
+                }
+                print("\(accountID)のデータベースの予定ID一覧: \(planIDsOnDatabase)")
+            } else {
+                print("\(accountID)のデータベースの予定なし")
+            }
+        })
+        
+        planIDsOnDatabase.append(newPlanID)
+        
+        // 検索条件を作成
+        let predicate = NSPredicate(format: "accountID == %@", argumentArray: [accountID])
+        let query = CKQuery(recordType: "Accounts", predicate: predicate)
+        
+        // データベースの予定一覧にIDを追加
+        publicDatabase.perform(query, inZoneWith: nil, completionHandler: {(records, error) in
+            
+            if let error = error {
+                print("\(accountID)のデータベースの予定ID追加エラー1: \(error)")
+                return
+            }
+            
+            for record in records! {
+                
+                record["planIDs"] = planIDsOnDatabase as [String]
+                
+                self.publicDatabase.save(record, completionHandler: {(record, error) in
+                    
+                    if let error = error {
+                        print("\(accountID)のデータベースの予定ID追加エラー2: \(error)")
+                        return
+                    }
+                    
+                    print("\(accountID)のデータベースの予定ID追加成功")
+                })
             }
         })
     }
@@ -756,6 +822,34 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         
         self.lats.remove(at: index)
         userDefaults.set(self.lats, forKey: "lats")
+        
+        // 検索条件を作成
+        let predicate = NSPredicate(format: "accountID == %@", argumentArray: [myID!])
+        let query = CKQuery(recordType: "Accounts", predicate: predicate)
+        
+        // データベースの予定一覧からIDを削除
+        publicDatabase.perform(query, inZoneWith: nil, completionHandler: {(records, error) in
+            
+            if let error = error {
+                print("データベースの予定ID削除エラー1: \(error)")
+                return
+            }
+            
+            for record in records! {
+                
+                record["planIDs"] = self.planIDs as [String]
+                
+                self.publicDatabase.save(record, completionHandler: {(record, error) in
+                    
+                    if let error = error {
+                        print("データベースの予定ID削除エラー2: \(error)")
+                        return
+                    }
+                    
+                    print("データベースの予定ID削除成功")
+                })
+            }
+        })
     }
     
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
