@@ -21,14 +21,23 @@ class MyProfileViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        icon.layer.borderColor = UIColor.gray.cgColor // 枠線の色
+        icon.layer.borderWidth = 0.5 // 枠線の太さ
+        icon.layer.cornerRadius = icon.bounds.width / 2 // 丸くする
+        icon.layer.masksToBounds = true // 丸の外側を消す
+        
         if let id = myID {
             fetchMyBio(myID: id)
             
             // 1秒後に処理
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                 if let bio = self.fetchedBio {
-                    self.bioLabel.text = bio
-                    self.bioLabel.textColor = .black
+                    if bio == "" {
+                        self.bioLabel.text = "自己紹介が未入力です"
+                    } else {
+                        self.bioLabel.text = bio
+                        self.bioLabel.textColor = .black
+                    }
                 }
             }
         }

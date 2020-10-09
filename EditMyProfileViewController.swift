@@ -22,8 +22,7 @@ class EditMyProfileViewController: UIViewController, UITextFieldDelegate, UIText
     @IBOutlet weak var nameTextField: UITextField!
     @IBOutlet weak var bioTextView: UITextView!
     
-    // var check = false
-    var check = [false, true]
+    var check = [true, true]
     @IBOutlet weak var saveButton: UIBarButtonItem!
     
     override func viewDidLoad() {
@@ -33,6 +32,15 @@ class EditMyProfileViewController: UIViewController, UITextFieldDelegate, UIText
         
         nameTextField.delegate = self
         bioTextView.delegate = self
+        
+        icon.layer.borderColor = UIColor.gray.cgColor // 枠線の色
+        icon.layer.borderWidth = 0.5 // 枠線の太さ
+        icon.layer.cornerRadius = icon.bounds.width / 2 // 丸くする
+        icon.layer.masksToBounds = true // 丸の外側を消す
+        
+        if let name = myName {
+            nameTextField.text = name
+        }
         
         // bioTextViewのフォント設定（不具合でTimesNewRomanになるのを防ぐ）
         let stringAttributes: [NSAttributedString.Key : Any] = [.font : UIFont.systemFont(ofSize: 14.0)]
@@ -228,7 +236,11 @@ class EditMyProfileViewController: UIViewController, UITextFieldDelegate, UIText
         }
         
         name = nameTextField.text!
-        bio = bioTextView.text
+        if bioTextView.text == "自己紹介（100文字以内）" {
+            bio = ""
+        } else {
+            bio = bioTextView.text
+        }
     }
 
 }
