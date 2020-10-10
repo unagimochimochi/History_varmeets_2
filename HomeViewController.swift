@@ -216,12 +216,6 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             return
         }
         
-        // 10桁の予定ID生成
-        let planID = generatePlanID(length: 10)
-        planIDs.append(planID)
-        
-        userDefaults.set(planIDs, forKey: "PlanIDs")
-        
         // 日時
         var toSaveEstimatedTime: Date?
         
@@ -312,46 +306,106 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         
         self.planTable.reloadData()
         
-        let recordID = CKRecord.ID(recordName: "planID-\(planID)")
-        let record = CKRecord(recordType: "Plans", recordID: recordID)
+        if let selectedIndexPath = planTable.indexPathForSelectedRow {
             
-        record["planID"] = planID as NSString
-        record["authorID"] = myID! as NSString
+            let planID = planIDs[selectedIndexPath.row]
             
-        if let savePlanTitle = toSavePlanTitle {
-            record["planTitle"] = savePlanTitle as NSString
+            // 検索条件を作成
+            let predicate = NSPredicate(format: "planID == %@", argumentArray: [planID])
+            let query = CKQuery(recordType: "Plans", predicate: predicate)
+            
+            // 検索した予定の中身を更新
+            publicDatabase.perform(query, inZoneWith: nil, completionHandler: {(records, error) in
+                
+                if let error = error {
+                    print("予定更新エラー1: \(error)")
+                    return
+                }
+                
+                for record in records! {
+                    
+                    if let savePlanTitle = toSavePlanTitle {
+                        record["planTitle"] = savePlanTitle as NSString
+                    }
+                        
+                    if let saveEstimatedTime = toSaveEstimatedTime {
+                        record["estimatedTime"] = saveEstimatedTime as Date
+                    }
+                        
+                    if toSaveParticipantIDs.isEmpty == false {
+                        record["participantIDs"] = toSaveParticipantIDs as [String]
+                    }
+                        
+                    if let savePlaceName = toSavePlaceName {
+                        record["placeName"] = savePlaceName as NSString
+                    }
+                        
+                    if let saveLocation = toSaveLocation {
+                        record["placeLatAndLon"] = saveLocation
+                    }
+                    
+                    self.publicDatabase.save(record, completionHandler: {(record, error) in
+                        
+                        if let error = error {
+                            print("予定更新エラー2: \(error)")
+                            return
+                        }
+                        
+                        print("予定更新成功")
+                    })
+                }
+            })
         }
-            
-        if let saveEstimatedTime = toSaveEstimatedTime {
-            record["estimatedTime"] = saveEstimatedTime as Date
-        }
-            
-        if toSaveParticipantIDs.isEmpty == false {
-            record["participantIDs"] = toSaveParticipantIDs as [String]
-        }
-            
-        if let savePlaceName = toSavePlaceName {
-            record["placeName"] = savePlaceName as NSString
-        }
-            
-        if let saveLocation = toSaveLocation {
-            record["placeLatAndLon"] = saveLocation
-        }
-            
-        // レコードを保存
-        publicDatabase.save(record, completionHandler: {(record, error) in
-            if let error = error {
-                print("Plansタイプ予定保存エラー: \(error)")
-                return
-            }
-            print("Plansタイプ予定保存成功")
-        })
         
-        // 予定作成者のデータベースに予定IDを追加
-        addPlanIDToDatabase(accountID: myID!, newPlanID: planID)
-        // 参加者のデータベースに予定IDを追加
-        for participantID in toSaveParticipantIDs {
-            addPlanIDToDatabase(accountID: participantID, newPlanID: planID)
+        // 新たに予定を作成したとき
+        else {
+            // 10桁の予定ID生成
+            let planID = generatePlanID(length: 10)
+            planIDs.append(planID)
+            
+            userDefaults.set(planIDs, forKey: "PlanIDs")
+            
+            let recordID = CKRecord.ID(recordName: "planID-\(planID)")
+            let record = CKRecord(recordType: "Plans", recordID: recordID)
+                
+            record["planID"] = planID as NSString
+            record["authorID"] = myID! as NSString
+                
+            if let savePlanTitle = toSavePlanTitle {
+                record["planTitle"] = savePlanTitle as NSString
+            }
+                
+            if let saveEstimatedTime = toSaveEstimatedTime {
+                record["estimatedTime"] = saveEstimatedTime as Date
+            }
+                
+            if toSaveParticipantIDs.isEmpty == false {
+                record["participantIDs"] = toSaveParticipantIDs as [String]
+            }
+                
+            if let savePlaceName = toSavePlaceName {
+                record["placeName"] = savePlaceName as NSString
+            }
+                
+            if let saveLocation = toSaveLocation {
+                record["placeLatAndLon"] = saveLocation
+            }
+                
+            // レコードを保存
+            publicDatabase.save(record, completionHandler: {(record, error) in
+                if let error = error {
+                    print("Plansタイプ予定保存エラー: \(error)")
+                    return
+                }
+                print("Plansタイプ予定保存成功")
+            })
+            
+            // 予定作成者のデータベースに予定IDを追加
+            addPlanIDToDatabase(accountID: myID!, newPlanID: planID)
+            // 参加者のデータベースに予定IDを追加
+            for participantID in toSaveParticipantIDs {
+                addPlanIDToDatabase(accountID: participantID, newPlanID: planID)
+            }
         }
     }
     
@@ -494,9 +548,14 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         participantIcon.layer.borderWidth = 1 // 枠線の太さ
         participantIcon.layer.cornerRadius = participantIcon.bounds.width / 2 // 丸くする
         participantIcon.layer.masksToBounds = true // 丸の外側を消す
-         
+        
         let participantLabel = cell.viewWithTag(4) as! UILabel
-        participantLabel.text = self.participantNames[indexPath.row]
+        
+        if numberOfParticipants[indexPath.row] <= 1 {
+            participantLabel.text = self.participantNames[indexPath.row]
+        } else {
+            participantLabel.text = "\(self.participantNames[indexPath.row]) 他"
+        }
         
         let placeLabel = cell.viewWithTag(5) as! UILabel
         placeLabel.text = self.places[indexPath.row]
@@ -715,20 +774,20 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     }
     
     func addPlanIDToDatabase(accountID: String, newPlanID: String) {
-        
-        var planIDsOnDatabase = [String]()
-        
-        let recordID = CKRecord.ID(recordName: "accountID-\(accountID)")
-        
-        publicDatabase.fetch(withRecordID: recordID, completionHandler: {(record, error) in
             
+        var planIDsOnDatabase = [String]()
+                
+        let recordID = CKRecord.ID(recordName: "accountID-\(accountID)")
+                
+        publicDatabase.fetch(withRecordID: recordID, completionHandler: {(record, error) in
+                    
             if let error = error {
                 print("予定ID一覧取得エラー: \(error)")
                 return
             }
-            
+                    
             if let planIDs = record?.value(forKey: "planIDs") as? [String] {
-                
+                        
                 for planID in planIDs {
                     planIDsOnDatabase.append(planID)
                 }
@@ -737,32 +796,32 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                 print("\(accountID)のデータベースの予定なし")
             }
         })
-        
+                
         planIDsOnDatabase.append(newPlanID)
-        
+                
         // 検索条件を作成
         let predicate = NSPredicate(format: "accountID == %@", argumentArray: [accountID])
         let query = CKQuery(recordType: "Accounts", predicate: predicate)
-        
+                
         // データベースの予定一覧にIDを追加
         publicDatabase.perform(query, inZoneWith: nil, completionHandler: {(records, error) in
-            
+                    
             if let error = error {
                 print("\(accountID)のデータベースの予定ID追加エラー1: \(error)")
                 return
             }
-            
-            for record in records! {
-                
-                record["planIDs"] = planIDsOnDatabase as [String]
-                
-                self.publicDatabase.save(record, completionHandler: {(record, error) in
                     
+            for record in records! {
+                        
+                record["planIDs"] = planIDsOnDatabase as [String]
+                        
+                self.publicDatabase.save(record, completionHandler: {(record, error) in
+                            
                     if let error = error {
                         print("\(accountID)のデータベースの予定ID追加エラー2: \(error)")
                         return
                     }
-                    
+                            
                     print("\(accountID)のデータベースの予定ID追加成功")
                 })
             }
