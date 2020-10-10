@@ -776,56 +776,69 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     func addPlanIDToDatabase(accountID: String, newPlanID: String) {
             
         var planIDsOnDatabase = [String]()
-                
-        let recordID = CKRecord.ID(recordName: "accountID-\(accountID)")
-                
-        publicDatabase.fetch(withRecordID: recordID, completionHandler: {(record, error) in
+        
+        // 直列キュー
+        let dispatchQueue = DispatchQueue(label: "queue")
+        
+        dispatchQueue.async {
+            sleep(1)
+            
+            let recordID = CKRecord.ID(recordName: "accountID-\(accountID)")
                     
-            if let error = error {
-                print("予定ID一覧取得エラー: \(error)")
-                return
-            }
-                    
-            if let planIDs = record?.value(forKey: "planIDs") as? [String] {
+            self.publicDatabase.fetch(withRecordID: recordID, completionHandler: {(record, error) in
                         
-                for planID in planIDs {
-                    planIDsOnDatabase.append(planID)
+                if let error = error {
+                    print("予定ID一覧取得エラー: \(error)")
+                    return
                 }
-                print("\(accountID)のデータベースの予定ID一覧: \(planIDsOnDatabase)")
-            } else {
-                print("\(accountID)のデータベースの予定なし")
-            }
-        })
-                
-        planIDsOnDatabase.append(newPlanID)
-                
-        // 検索条件を作成
-        let predicate = NSPredicate(format: "accountID == %@", argumentArray: [accountID])
-        let query = CKQuery(recordType: "Accounts", predicate: predicate)
-                
-        // データベースの予定一覧にIDを追加
-        publicDatabase.perform(query, inZoneWith: nil, completionHandler: {(records, error) in
-                    
-            if let error = error {
-                print("\(accountID)のデータベースの予定ID追加エラー1: \(error)")
-                return
-            }
-                    
-            for record in records! {
                         
-                record["planIDs"] = planIDsOnDatabase as [String]
-                        
-                self.publicDatabase.save(record, completionHandler: {(record, error) in
+                if let planIDs = record?.value(forKey: "planIDs") as? [String] {
                             
-                    if let error = error {
-                        print("\(accountID)のデータベースの予定ID追加エラー2: \(error)")
-                        return
+                    for planID in planIDs {
+                        planIDsOnDatabase.append(planID)
                     }
+                } else {
+                    print("\(accountID)のデータベースの予定なし")
+                }
+            })
+        }
+        
+        dispatchQueue.async {
+            sleep(1)
+            planIDsOnDatabase.append(newPlanID)
+        }
+        
+        dispatchQueue.async {
+            sleep(1)
+            
+            // 検索条件を作成
+            let predicate = NSPredicate(format: "accountID == %@", argumentArray: [accountID])
+            let query = CKQuery(recordType: "Accounts", predicate: predicate)
+                    
+            // データベースの予定一覧にIDを追加
+            self.publicDatabase.perform(query, inZoneWith: nil, completionHandler: {(records, error) in
+                        
+                if let error = error {
+                    print("\(accountID)のデータベースの予定ID追加エラー1: \(error)")
+                    return
+                }
+                        
+                for record in records! {
                             
-                    print("\(accountID)のデータベースの予定ID追加成功")
-                })
-            }
-        })
+                    record["planIDs"] = planIDsOnDatabase as [String]
+                            
+                    self.publicDatabase.save(record, completionHandler: {(record, error) in
+                                
+                        if let error = error {
+                            print("\(accountID)のデータベースの予定ID追加エラー2: \(error)")
+                            return
+                        }
+                                
+                        print("\(accountID)のデータベースの予定ID追加成功")
+                    })
+                }
+            })
+        }
     }
     
     func generatePlanID(length: Int) -> String {
