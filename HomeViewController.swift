@@ -307,9 +307,9 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             userDefaults.set(lats, forKey: "lats")
         }
         
-        self.planTable.reloadData()
-        
         if let selectedIndexPath = planTable.indexPathForSelectedRow {
+            
+            print("予定を編集")
             
             let planID = planIDs[selectedIndexPath.row]
             
@@ -362,6 +362,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         
         // 新たに予定を作成したとき
         else {
+            print("予定を生成")
             // 10桁の予定ID生成
             let planID = generatePlanID(length: 10)
             planIDs.append(planID)
@@ -435,6 +436,8 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                 }
             }
         }
+        
+        self.planTable.reloadData()
     }
     
     override func viewDidLoad() {
@@ -530,8 +533,10 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         // print(#function)
 
         if let indexPath = planTable.indexPathForSelectedRow {
+            print("deselect")
             planTable.deselectRow(at: indexPath, animated: true)
         }
+ 
         
         // 1秒ごとに処理
         timer = Timer.scheduledTimer(timeInterval: 1, target: self, selector: #selector(update), userInfo: nil, repeats: true)
