@@ -20,8 +20,6 @@ let userDefaults = UserDefaults.standard
 
 class HomeViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
     
-    var planIDsOnDatabase = [String]()
-    
     var dateAndTimes = [String]()
     var planTitles = [String]()
     var participantNames = [String]()
@@ -31,6 +29,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     var lats = [String]()
     
     let publicDatabase = CKContainer.default().publicCloudDatabase
+    var planIDsOnDatabase = [[String]]()
     
     var fetchedRequest = [String]()
     var friendIDs = [String]() // 起動時の友だち一覧
@@ -410,29 +409,20 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                 everyone.append(participantID)
             }
             
-            print("everyoneの要素数: \(everyone.count)")
+            // 人数分の空の配列を入れる
+            // planIDsOnDatabase = [[String](), [String](), ...]
+            for _ in 0...(everyone.count - 1) {
+                planIDsOnDatabase.append([String]())
+            }
             
-            var count = 0
-            var checkCount = 0
-            
-            while count < (everyone.count - 1) {
-                
-                if count == checkCount {
-                    checkCount += 1
-                    planIDsOnDatabase.removeAll()
+            for i in 0...(everyone.count - 1) {
+                fetchPlanIDs(accountID: everyone[i], index: i, completion: {
+                    // データベースの予定ID取得後に新たなIDを追加
+                    self.planIDsOnDatabase[i].append(planID)
                     
-                    print("count: \(count)")
-                    fetchPlanIDs(accountID: everyone[count], completion: {
-                        // データベースの予定ID取得後に新たなIDを追加
-                        self.planIDsOnDatabase.append(planID)
-                        
-                        // 次の処理（データベースに保存）
-                        self.addPlanIDToDatabase(accountID: everyone[count], newPlanID: planID, completion: {
-                            // データベースに予定ID保存後、次の人へ
-                            count += 1
-                        })
-                    })
-                }
+                    // 次の処理
+                    self.addPlanIDToDatabase(accountID: everyone[i], index: i, newPlanID: planID)
+                })
             }
         }
         
@@ -805,7 +795,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         })
     }
     
-    func fetchPlanIDs(accountID: String, completion: @escaping () -> ()) {
+    func fetchPlanIDs(accountID: String, index: Int, completion: @escaping () -> ()) {
         print("\(accountID)の予定一覧取得開始")
         
         let recordID = CKRecord.ID(recordName: "accountID-\(accountID)")
@@ -820,7 +810,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             if let planIDs = record?.value(forKey: "planIDs") as? [String] {
                 
                 for planID in planIDs {
-                    self.planIDsOnDatabase.append(planID)
+                    self.planIDsOnDatabase[index].append(planID)
                 }
             } else {
                 print("\(accountID)のデータベースの予定なし")
@@ -831,7 +821,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         })
     }
     
-    func addPlanIDToDatabase(accountID: String, newPlanID: String, completion: @escaping () -> ()) {
+    func addPlanIDToDatabase(accountID: String, index: Int, newPlanID: String) {
         print("\(accountID)の予定一覧保存開始")
         
         // 検索条件を作成
@@ -848,7 +838,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             
             for record in records! {
                 
-                record["planIDs"] = self.planIDsOnDatabase as [String]
+                record["planIDs"] = self.planIDsOnDatabase[index] as [String]
                 
                 self.publicDatabase.save(record, completionHandler: {(record, error) in
                     
@@ -858,7 +848,6 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                     }
                     
                     print("\(accountID)のデータベースの予定ID追加成功")
-                    completion()
                 })
             }
         })
