@@ -27,7 +27,7 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
     @IBOutlet var tapGesRec: UITapGestureRecognizer!
     @IBOutlet var longPressGesRec: UILongPressGestureRecognizer!
     
-    @IBOutlet weak var addPlanButton: UIButton! // オレンジの丸いボタン
+    @IBOutlet weak var addPlanButton: UIButton!    // オレンジの丸いボタン
     
     @IBOutlet weak var placeSearchBar: UISearchBar!
     
@@ -37,7 +37,11 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
     @IBOutlet weak var placeNameLabel: UILabel!
     @IBOutlet weak var placeAddressLabel: UILabel!
     @IBOutlet weak var addFavButton: UIButton!
-    @IBOutlet weak var addPlanButtonD: UIButton! // DetailsView内のボタン
+    @IBOutlet weak var addPlanButtonD: UIButton!    // DetailsView内のボタン
+    
+    let publicDatabase = CKContainer.default().publicCloudDatabase
+    
+    var participantIDs = [String]()    // 自分以外の参加者のID
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -79,6 +83,69 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
         initMap()
 
         placeSearchBar.delegate = self
+    }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        let now = Date()
+        let calendar = Calendar(identifier: .japanese)
+        
+        if estimatedTimesSort.isEmpty == false {
+            
+            // 予定サンプルが消されていないとき
+            let referenceDate = Date(timeIntervalSinceReferenceDate: 0.0)    // 00:00:00 UTC on 1 January 2001
+            if estimatedTimesSort[0] == referenceDate {
+                // サンプル以外の予定が登録されているとき
+                if estimatedTimesSort.count >= 2 {
+                    
+                    let components = calendar.dateComponents([.month, .day, .hour, .minute, .second], from: now, to: estimatedTimesSort[1])
+                    
+                    // 一番近い予定のindexを取得
+                    if let index = estimatedTimes.index(of: estimatedTimesSort[1]) {
+                        // 1時間未満のとき（過ぎた場合も含む）
+                        if components.month! <= 0 && components.day! <= 0 && components.hour! <= 0 &&
+                            components.minute! <= 59 &&
+                            components.second! <= 59 {
+                            
+                            // その予定の参加者を取得
+                            fetchParticipants(planID: myPlanIDs[index], completion: {
+                                // 参加者の中から自分のIDのindexを取得
+                                if let myIndex = self.participantIDs.index(of: myID!) {
+                                    // 自分のIDを抜く
+                                    self.participantIDs.remove(at: myIndex)
+                                    print("抜いたあと: \(self.participantIDs)")
+                                }
+                            })
+                        }
+                    }
+                }
+            }
+            
+            // 予定サンプルが消されているとき
+            else {
+                let components = calendar.dateComponents([.month, .day, .hour, .minute, .second], from: now, to: estimatedTimesSort[0])
+                
+                // 一番近い予定のindexを取得
+                if let index = estimatedTimes.index(of: estimatedTimesSort[0]) {
+                    // 1時間未満のとき（過ぎた場合も含む）
+                    if components.month! <= 0 && components.day! <= 0 && components.hour! <= 0 &&
+                        components.minute! <= 59 &&
+                        components.second! <= 59 {
+                        
+                        // その予定の参加者を取得
+                        fetchParticipants(planID: myPlanIDs[index], completion: {
+                            // 参加者の中から自分のIDのindexを取得
+                            if let myIndex = self.participantIDs.index(of: myID!) {
+                                // 自分のIDを抜く
+                                self.participantIDs.remove(at: myIndex)
+                                print("抜いたあと: \(self.participantIDs)")
+                            }
+                        })
+                    }
+                }
+            }
+        }
     }
     
     // タップ検出
@@ -496,9 +563,8 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
     }
     
     func recordLocation() {
+        
         if let id = myID {
-            // デフォルトコンテナ（iCloud.com.gmail.mokamokayuuyuu.varmeets）のパブリックデータベースにアクセス
-            let publicDatabase = CKContainer.default().publicCloudDatabase
             
             // 検索条件を作成
             let predicate = NSPredicate(format: "accountID == %@", argumentArray: [id])
@@ -512,7 +578,7 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
                 }
                 for record in records! {
                     record["currentLocation"] = self.mapView.userLocation.location
-                    publicDatabase.save(record, completionHandler: {(record, error) in
+                    self.publicDatabase.save(record, completionHandler: {(record, error) in
                         if let error = error {
                             print("レコードの位置情報更新エラー2: \(error)")
                             return
@@ -522,6 +588,34 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
                 }
             })
         }
+    }
+    
+    func fetchParticipants(planID: String, completion: @escaping () -> ()) {
+        
+        let recordID = CKRecord.ID(recordName: "planID-\(planID)")
+        
+        publicDatabase.fetch(withRecordID: recordID, completionHandler: {(record, error) in
+            
+            if let error = error {
+                print("予定参加者取得エラー: \(error)")
+                return
+            }
+            
+            if let authorID = record?.value(forKey: "authorID") as? String {
+                self.participantIDs.append(authorID)
+            }
+            
+            if let participantIDs = record?.value(forKey: "participantIDs") as? [String] {
+                for participantID in participantIDs {
+                    self.participantIDs.append(participantID)
+                }
+                completion()
+            }
+        })
+    }
+    
+    func startedMeeting() {
+        
     }
     
     func displayDetailsView() {

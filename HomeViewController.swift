@@ -12,11 +12,14 @@ import CloudKit
 var myID: String?
 var myName: String?
 
+var myPlanIDs = [String]()
+var estimatedTimes = [Date]()
+var estimatedTimesSort = [Date]()
+
 let userDefaults = UserDefaults.standard
 
 class HomeViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
     
-    var planIDs = [String]()
     var planIDsOnDatabase = [String]()
     
     var dateAndTimes = [String]()
@@ -26,9 +29,6 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     var places = [String]()
     var lons = [String]()
     var lats = [String]()
-    
-    var estimatedTimes = [Date]()
-    var estimatedTimesSort = [Date]()
     
     let publicDatabase = CKContainer.default().publicCloudDatabase
     
@@ -311,7 +311,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             
             print("予定を編集")
             
-            let planID = planIDs[selectedIndexPath.row]
+            let planID = myPlanIDs[selectedIndexPath.row]
             
             // 検索条件を作成
             let predicate = NSPredicate(format: "planID == %@", argumentArray: [planID])
@@ -365,9 +365,9 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             print("予定を生成")
             // 10桁の予定ID生成
             let planID = generatePlanID(length: 10)
-            planIDs.append(planID)
+            myPlanIDs.append(planID)
             
-            userDefaults.set(planIDs, forKey: "PlanIDs")
+            userDefaults.set(myPlanIDs, forKey: "PlanIDs")
             
             let recordID = CKRecord.ID(recordName: "planID-\(planID)")
             let record = CKRecord(recordType: "Plans", recordID: recordID)
@@ -410,8 +410,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                 everyone.append(participantID)
             }
             
-            print(everyone)
-            print(everyone.count)
+            print("everyoneの要素数: \(everyone.count)")
             
             var count = 0
             var checkCount = 0
@@ -422,7 +421,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                     checkCount += 1
                     planIDsOnDatabase.removeAll()
                     
-                    print(count)
+                    print("count: \(count)")
                     fetchPlanIDs(accountID: everyone[count], completion: {
                         // データベースの予定ID取得後に新たなIDを追加
                         self.planIDsOnDatabase.append(planID)
@@ -476,9 +475,9 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         }
         
         if userDefaults.object(forKey: "PlanIDs") != nil {
-            self.planIDs = userDefaults.stringArray(forKey: "PlanIDs")!
+            myPlanIDs = userDefaults.stringArray(forKey: "PlanIDs")!
         } else {
-            self.planIDs = ["samplePlan"]
+            myPlanIDs = ["samplePlan"]
         }
         
         if userDefaults.object(forKey: "DateAndTimes") != nil {
@@ -488,11 +487,11 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         }
         
         if userDefaults.object(forKey: "EstimatedTimes") != nil {
-            self.estimatedTimes = userDefaults.array(forKey: "EstimatedTimes") as! [Date]
+            estimatedTimes = userDefaults.array(forKey: "EstimatedTimes") as! [Date]
         } else {
             // estimatedTimesの初期値に 00:00:00 UTC on 1 January 2001 を設定
             let referenceDate = Date(timeIntervalSinceReferenceDate: 0.0)
-            self.estimatedTimes = [referenceDate]
+            estimatedTimes = [referenceDate]
         }
         
         if userDefaults.object(forKey: "PlanTitles") != nil {
@@ -892,14 +891,14 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     
     func remove(index: Int) {
         
-        planIDs.remove(at: index)
-        userDefaults.set(self.planIDs, forKey: "PlanIDs")
+        myPlanIDs.remove(at: index)
+        userDefaults.set(myPlanIDs, forKey: "PlanIDs")
         
         dateAndTimes.remove(at: index)
-        userDefaults.set(self.dateAndTimes, forKey: "DateAndTimes")
+        userDefaults.set(dateAndTimes, forKey: "DateAndTimes")
         
-        self.estimatedTimes.remove(at: index)
-        userDefaults.set(self.estimatedTimes, forKey: "EstimatedTimes")
+        estimatedTimes.remove(at: index)
+        userDefaults.set(estimatedTimes, forKey: "EstimatedTimes")
         
         self.planTitles.remove(at: index)
         userDefaults.set(self.planTitles, forKey: "PlanTitles")
@@ -933,7 +932,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             
             for record in records! {
                 
-                record["planIDs"] = self.planIDs as [String]
+                record["planIDs"] = myPlanIDs as [String]
                 
                 self.publicDatabase.save(record, completionHandler: {(record, error) in
                     
@@ -956,7 +955,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         
         if identifier == "toPlanDetails" {
             let planDetailsVC = segue.destination as! PlanDetailsViewController
-            planDetailsVC.planID = planIDs[(planTable.indexPathForSelectedRow?.row)!]
+            planDetailsVC.planID = myPlanIDs[(planTable.indexPathForSelectedRow?.row)!]
             planDetailsVC.dateAndTime = dateAndTimes[(planTable.indexPathForSelectedRow?.row)!]
             planDetailsVC.planTitle = planTitles[(planTable.indexPathForSelectedRow?.row)!]
             planDetailsVC.place = places[(planTable.indexPathForSelectedRow?.row)!]
