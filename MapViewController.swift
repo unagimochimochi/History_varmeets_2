@@ -41,7 +41,9 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
     
     let publicDatabase = CKContainer.default().publicCloudDatabase
     
-    var participantIDs = [String]()    // 自分以外の参加者のID
+    var meetingTimer: Timer!
+    var participantIDs = [String]()
+    var participantLocations = [CLLocation]()
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -109,12 +111,24 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
                             components.second! <= 59 {
                             
                             // その予定の参加者を取得
-                            fetchParticipants(planID: myPlanIDs[index], completion: {
+                            fetchParticipantIDs(planID: myPlanIDs[index], completion: {
                                 // 参加者の中から自分のIDのindexを取得
                                 if let myIndex = self.participantIDs.index(of: myID!) {
                                     // 自分のIDを抜く
                                     self.participantIDs.remove(at: myIndex)
                                     print("抜いたあと: \(self.participantIDs)")
+                                    
+                                    // それぞれの位置情報の初期値に適当な値を入れる
+                                    for _ in 0...(self.participantIDs.count - 1) {
+                                        let first = CLLocation(latitude: 35.6809591, longitude: 139.7673068)    // 東京駅
+                                        self.participantLocations.append(first)
+                                    }
+                                    
+                                    // タイマースタート
+                                    DispatchQueue.main.async { [weak self] in
+                                        guard let `self` = self else { return }
+                                        self.meetingTimer = Timer.scheduledTimer(timeInterval: 1, target: self, selector: #selector(self.meeting), userInfo: nil, repeats: true)
+                                    }
                                 }
                             })
                         }
@@ -134,17 +148,33 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
                         components.second! <= 59 {
                         
                         // その予定の参加者を取得
-                        fetchParticipants(planID: myPlanIDs[index], completion: {
+                        fetchParticipantIDs(planID: myPlanIDs[index], completion: {
                             // 参加者の中から自分のIDのindexを取得
                             if let myIndex = self.participantIDs.index(of: myID!) {
                                 // 自分のIDを抜く
                                 self.participantIDs.remove(at: myIndex)
-                                print("抜いたあと: \(self.participantIDs)")
+                                
+                                // それぞれの位置情報の初期値に適当な値を入れる
+                                for _ in 0...(self.participantIDs.count - 1) {
+                                    let first = CLLocation(latitude: 35.6809591, longitude: 139.7673068)    // 東京駅
+                                    self.participantLocations.append(first)
+                                }
+                                
+                                // タイマースタート
+                                self.meetingTimer = Timer.scheduledTimer(timeInterval: 1, target: self, selector: #selector(self.meeting), userInfo: nil, repeats: true)
                             }
                         })
                     }
                 }
             }
+        }
+    }
+    
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        
+        if let workingTimer = meetingTimer {
+            workingTimer.invalidate()
         }
     }
     
@@ -590,7 +620,7 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
         }
     }
     
-    func fetchParticipants(planID: String, completion: @escaping () -> ()) {
+    func fetchParticipantIDs(planID: String, completion: @escaping () -> ()) {
         
         let recordID = CKRecord.ID(recordName: "planID-\(planID)")
         
@@ -614,8 +644,30 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
         })
     }
     
-    func startedMeeting() {
+    func fetchLocation(accountID: String, count: Int) {
         
+        let recordID = CKRecord.ID(recordName: "accountID-\(accountID)")
+        
+        publicDatabase.fetch(withRecordID: recordID, completionHandler: {(record, error) in
+            
+            if let error = error {
+                print("\(accountID)の位置情報取得エラー: \(error)")
+                return
+            }
+            
+            if let location = record?.value(forKey: "currentLocation") as? CLLocation {
+                self.participantLocations[count] = location
+                print("\(accountID)の位置: \(self.participantLocations[count])")
+            }
+        })
+    }
+    
+    @objc func meeting() {
+        print("meeting")
+        
+        for count in 0...(participantIDs.count - 1) {
+            fetchLocation(accountID: participantIDs[count], count: count)
+        }
     }
     
     func displayDetailsView() {
