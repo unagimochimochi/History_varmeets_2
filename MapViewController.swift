@@ -44,6 +44,7 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
     var meetingTimer: Timer!
     var participantIDs = [String]()
     var participantLocations = [CLLocation]()
+    var participantAnnotations = [MKPointAnnotation]()
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -116,12 +117,18 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
                                 if let myIndex = self.participantIDs.index(of: myID!) {
                                     // 自分のIDを抜く
                                     self.participantIDs.remove(at: myIndex)
-                                    print("抜いたあと: \(self.participantIDs)")
                                     
-                                    // それぞれの位置情報の初期値に適当な値を入れる
-                                    for _ in 0...(self.participantIDs.count - 1) {
-                                        let first = CLLocation(latitude: 35.6809591, longitude: 139.7673068)    // 東京駅
+                                    // それぞれの位置情報の初期値に適当な値を入れる（東京駅）
+                                    for i in 0...(self.participantIDs.count - 1) {
+                                        
+                                        let first = CLLocation(latitude: 35.6809591, longitude: 139.7673068)
                                         self.participantLocations.append(first)
+                                        
+                                        self.participantAnnotations.append(MKPointAnnotation())
+                                        let first2D = CLLocationCoordinate2D(latitude: 35.6809591, longitude: 139.7673068)
+                                        self.participantAnnotations[i].coordinate = first2D
+                                        self.mapView.addAnnotation(self.participantAnnotations[i])
+                                        self.participantAnnotations[i].title = self.participantIDs[i]
                                     }
                                     
                                     // タイマースタート
@@ -154,14 +161,23 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
                                 // 自分のIDを抜く
                                 self.participantIDs.remove(at: myIndex)
                                 
-                                // それぞれの位置情報の初期値に適当な値を入れる
-                                for _ in 0...(self.participantIDs.count - 1) {
-                                    let first = CLLocation(latitude: 35.6809591, longitude: 139.7673068)    // 東京駅
+                                // それぞれの位置情報の初期値に適当な値を入れる（東京駅）
+                                for i in 0...(self.participantIDs.count - 1) {
+                                    
+                                    let first = CLLocation(latitude: 35.6809591, longitude: 139.7673068)
                                     self.participantLocations.append(first)
+                                    
+                                    self.participantAnnotations.append(MKPointAnnotation())
+                                    let first2D = CLLocationCoordinate2D(latitude: 35.6809591, longitude: 139.7673068)
+                                    self.participantAnnotations[i].coordinate = first2D
+                                    self.mapView.addAnnotation(self.participantAnnotations[i])
                                 }
                                 
                                 // タイマースタート
-                                self.meetingTimer = Timer.scheduledTimer(timeInterval: 1, target: self, selector: #selector(self.meeting), userInfo: nil, repeats: true)
+                                DispatchQueue.main.async { [weak self] in
+                                    guard let `self` = self else { return }
+                                    self.meetingTimer = Timer.scheduledTimer(timeInterval: 1, target: self, selector: #selector(self.meeting), userInfo: nil, repeats: true)
+                                }
                             }
                         })
                     }
@@ -295,7 +311,7 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
         detailsButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 18.0)
         
         // 配列が空のとき（ロングタップでピンを立てたとき）
-        if searchAnnotationArray.isEmpty == true {
+        if searchAnnotationArray.isEmpty == true && self.annotation.title != nil {
             let annotationView = MKPinAnnotationView(annotation: annotation, reuseIdentifier: nil)
             // 吹き出しを表示
             annotationView.canShowCallout = true
@@ -306,7 +322,7 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
         }
         
         // 配列が空ではないとき（検索でピンを立てたとき）
-        else {
+        else if searchAnnotationArray.isEmpty == false {
             let searchAnnotationView = MKPinAnnotationView(annotation: searchAnnotationArray as? MKAnnotation, reuseIdentifier: nil)
             // 吹き出しを表示
             searchAnnotationView.canShowCallout = true
@@ -314,6 +330,15 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
             searchAnnotationView.rightCalloutAccessoryView = detailsButton
             
             return searchAnnotationView
+        }
+        
+        // その他（参加者のピン？）
+        else {
+            let participantAnnotationView = MKPinAnnotationView(annotation: annotation, reuseIdentifier: nil)
+            // 吹き出しを表示
+            participantAnnotationView.canShowCallout = true
+            
+            return participantAnnotationView
         }
     }
     
@@ -644,7 +669,7 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
         })
     }
     
-    func fetchLocation(accountID: String, count: Int) {
+    func fetchLocation(accountID: String, count: Int, completion: @escaping () -> ()) {
         
         let recordID = CKRecord.ID(recordName: "accountID-\(accountID)")
         
@@ -658,6 +683,7 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
             if let location = record?.value(forKey: "currentLocation") as? CLLocation {
                 self.participantLocations[count] = location
                 print("\(accountID)の位置: \(self.participantLocations[count])")
+                completion()
             }
         })
     }
@@ -665,8 +691,12 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
     @objc func meeting() {
         print("meeting")
         
-        for count in 0...(participantIDs.count - 1) {
-            fetchLocation(accountID: participantIDs[count], count: count)
+        for i in 0...(participantIDs.count - 1) {
+            // 位置情報取得
+            fetchLocation(accountID: participantIDs[i], count: i, completion: {
+                // ピンの座標を取得した位置情報に指定
+                self.participantAnnotations[i].coordinate = self.participantLocations[i].coordinate
+            })
         }
     }
     
