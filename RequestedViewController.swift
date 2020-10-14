@@ -20,13 +20,14 @@ class RequestedViewController: UIViewController, UITableViewDelegate, UITableVie
         
         requestedTableView.delegate = self
         requestedTableView.dataSource = self
+
+        // 名前に初期値（ID）を代入
+        for i in 0...(requestedIDs.count - 1) {
+            requestedNames.append(requestedIDs[i])
+        }
         
-        // 申請の数だけfetchを繰り返す
-        // countは0スタート、requestedIDs.countは1スタート
-        var count = 0
-        while count < requestedIDs.count {
-            fetchFriendInfo(friendID: requestedIDs[count])
-            count += 1
+        for i in 0...(requestedIDs.count - 1) {
+            fetchFriendInfo(friendID: requestedIDs[i], index: i)
         }
         
         // 1秒後
@@ -35,7 +36,7 @@ class RequestedViewController: UIViewController, UITableViewDelegate, UITableVie
         }
     }
     
-    func fetchFriendInfo(friendID: String) {
+    func fetchFriendInfo(friendID: String, index: Int) {
         
         let publicDatabase = CKContainer.default().publicCloudDatabase
         let recordID = CKRecord.ID(recordName: "accountID-\(friendID)")
@@ -48,7 +49,7 @@ class RequestedViewController: UIViewController, UITableViewDelegate, UITableVie
             }
             
             if let name = record?.value(forKey: "accountName") as? String {
-                self.requestedNames.append(name)
+                self.requestedNames[index] = name
             }
         })
     }

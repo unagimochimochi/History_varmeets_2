@@ -23,42 +23,62 @@ class FriendsViewController: UIViewController, UITableViewDataSource, UITableVie
     
     let publicDatabase = CKContainer.default().publicCloudDatabase
     
-    var friendIDs: [String] = [] {
-        // 友だちのID一覧が取得できたら友だちの情報を取得
-        didSet {
-            fetchFriendInfo()
-            // 1秒後に処理
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: {
-                if self.friendNames.isEmpty == false {
-                    self.friendsTableView.reloadData()
-                }
-            })
-        }
-    }
-
+    var friendIDs = [String]()
     var friendNames = [String]()
     var friendBios = [String]()
+    
+    var timer: Timer!
+    var check = [Bool]()
         
     override func viewDidLoad() {
-        super.viewDidLoad()        
-    }
-    
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
+        super.viewDidLoad()
         
         friendIDs.removeAll()
         friendNames.removeAll()
         friendBios.removeAll()
         
-        fetchFriends()
+        friendsTableView.reloadData()
+        
+        // タイマースタート
+        timer = Timer.scheduledTimer(timeInterval: 0.5, target: self, selector: #selector(update), userInfo: nil, repeats: true)
+        
+        fetchFriends(completion: {
+            // 友だち一覧を取得し終えたら名前とbioに初期値（ID）を代入
+            for i in 0...(self.friendIDs.count - 1) {
+                self.friendNames.append(self.friendIDs[i])
+                self.friendBios.append(self.friendIDs[i])
+                self.check.append(false)
+            }
+            
+            // 名前とbioを取得
+            for i in 0...(self.friendIDs.count - 1) {
+                self.fetchFriendInfo(index: i, completion: {
+                    self.check[i] = true
+                })
+            }
+        })
     }
     
-    func fetchFriends() {
+    @objc func update() {
+        print("update")
+        
+        if check.contains(false) == false {
+            // タイマーを止める
+            if let workingTimer = timer {
+                workingTimer.invalidate()
+            }
+            
+            // UI更新
+            friendsTableView.reloadData()
+        }
+    }
+    
+    func fetchFriends(completion: @escaping () -> ()) {
         
         // 自分のレコードから友だち一覧を取得
-        let recordID1 = CKRecord.ID(recordName: "accountID-\(myID!)")
+        let recordID = CKRecord.ID(recordName: "accountID-\(myID!)")
         
-        publicDatabase.fetch(withRecordID: recordID1, completionHandler: {(record, error) in
+        publicDatabase.fetch(withRecordID: recordID, completionHandler: {(record, error) in
             
             if let error = error {
                 print("友だち一覧取得エラー: \(error)")
@@ -66,41 +86,39 @@ class FriendsViewController: UIViewController, UITableViewDataSource, UITableVie
             }
             
             if let friendIDs = record?.value(forKey: "friends") as? [String] {
+                
                 for friendID in friendIDs {
-                    print("友だち一覧取得成功")
                     self.friendIDs.append(friendID)
                 }
+                
+                completion()
             }
         })
     }
     
-    func fetchFriendInfo() {
+    func fetchFriendInfo(index: Int, completion: @escaping () -> ()) {
         
-        var count = 0
-        while count < friendIDs.count {
+        let recordID = CKRecord.ID(recordName: "accountID-\(friendIDs[index])")
+        
+        publicDatabase.fetch(withRecordID: recordID, completionHandler: {(record, error) in
             
-            let recordID2 = CKRecord.ID(recordName: "accountID-\(friendIDs[count])")
+            if let error = error {
+                print("友だちの情報取得エラー: \(error)")
+                return
+            }
             
-            publicDatabase.fetch(withRecordID: recordID2, completionHandler: {(record, error) in
-                
-                if let error = error {
-                    print("友だちの情報取得エラー: \(error)")
-                    return
-                }
-                
-                if let name = record?.value(forKey: "accountName") as? String {
-                    self.friendNames.append(name)
-                }
-                
-                if let bio = record?.value(forKey: "accountBio") as? String {
-                    self.friendBios.append(bio)
-                } else {
-                    self.friendBios.append("自己紹介が未入力です")
-                }
-            })
+            if let name = record?.value(forKey: "accountName") as? String {
+                self.friendNames[index] = name
+            }
             
-            count += 1
-        }
+            if let bio = record?.value(forKey: "accountBio") as? String {
+                self.friendBios[index] = bio
+            } else {
+                self.friendBios[index] = "自己紹介が未入力です"
+            }
+            
+            completion()
+        })
     }
     
     func tableView(_ table: UITableView, numberOfRowsInSection section: Int) -> Int {
