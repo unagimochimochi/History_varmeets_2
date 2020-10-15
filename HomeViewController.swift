@@ -38,6 +38,9 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     
     var timer: Timer!
     
+    var fetchRequestsTimer: Timer!
+    var fetchRequestsCheck = false
+    
     var fetchPlansTimer: Timer!
     var fetchPlansCheck = [Bool]()
     
@@ -443,20 +446,15 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         myIcon.layer.cornerRadius = myIcon.bounds.width / 2 // 丸くする
         myIcon.layer.masksToBounds = true // 丸の外側を消す
         
-        // 1秒後に処理
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            // 友だち申請されている場合
-            if self.fetchedRequests.isEmpty == false {
-                self.performSegue(withIdentifier: "toRequestedVC", sender: nil)
-            }
-        }
-        
         if userDefaults.object(forKey: "myID") != nil {
             myID = userDefaults.string(forKey: "myID")
             print("myID: \(myID!)")
             
+            // 友だち申請取得監視タイマースタート
+            fetchRequestsTimer = Timer.scheduledTimer(timeInterval: 0.5, target: self, selector: #selector(completedFetchingRequests), userInfo: nil, repeats: true)
+            
             // 友だち申請をデータベースから取得
-            fetchRequests(id: myID!)
+            fetchRequests()
             
             // 友だち一覧をデータベースから取得
             fetchFriendIDs(id: myID!)
@@ -478,48 +476,61 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                 self.lats.removeAll()
                 self.lons.removeAll()
                 
-                for _ in 0...(myPlanIDs.count - 1) {
-                    self.dateAndTimes.append("日時")
-                    estimatedTimes.append(Date(timeIntervalSinceReferenceDate: 0.0))
-                    self.planTitles.append("予定サンプル")
-                    self.participantIDs.append("participantID")
-                    self.participantNames.append("参加者")
-                    self.numberOfParticipants.append(0)
-                    self.places.append("場所")
-                    self.lats.append("緯度")
-                    self.lons.append("経度")
-                    self.fetchPlansCheck.append(false)
+                if myPlanIDs.isEmpty == false {
+                    
+                    for _ in 0...(myPlanIDs.count - 1) {
+                        self.dateAndTimes.append("日時")
+                        estimatedTimes.append(Date(timeIntervalSinceReferenceDate: 0.0))
+                        self.planTitles.append("予定サンプル")
+                        self.participantIDs.append("participantID")
+                        self.participantNames.append("参加者")
+                        self.numberOfParticipants.append(0)
+                        self.places.append("場所")
+                        self.lats.append("緯度")
+                        self.lons.append("経度")
+                        self.fetchPlansCheck.append(false)
+                    }
+                    
+                    // 予定の詳細を取得
+                    for i in 0...(myPlanIDs.count - 1) {
+                        self.fetchMyPlanDetails(index: i, completion: {
+                            // estimatedTimeから文字列に
+                            let formatter = DateFormatter()
+                            formatter.timeStyle = .short
+                            formatter.dateStyle = .full
+                            formatter.timeZone = NSTimeZone.local
+                            formatter.locale = Locale(identifier: "ja_JP")
+                            self.dateAndTimes[i] = formatter.string(from: estimatedTimes[i])
+                            
+                            // 参加代表者のIDから名前を取得
+                            self.fetchParticipantName(index: i, completion: {
+                                
+                                // 完了チェック
+                                self.fetchPlansCheck[i] = true
+                                
+                                // UserDefaultsに保存
+                                userDefaults.set(myPlanIDs, forKey: "PlanIDs")
+                                userDefaults.set(self.dateAndTimes, forKey: "DateAndTimes")
+                                userDefaults.set(estimatedTimes, forKey: "EstimatedTimes")
+                                userDefaults.set(self.planTitles, forKey: "PlanTitles")
+                                userDefaults.set(self.participantNames, forKey: "ParticipantNames")
+                                userDefaults.set(self.numberOfParticipants, forKey: "NumberOfParticipants")
+                                userDefaults.set(self.places, forKey: "Places")
+                                userDefaults.set(self.lats, forKey: "lats")
+                                userDefaults.set(self.lons, forKey: "lons")
+                            })
+                        })
+                    }
                 }
                 
-                // 予定の詳細を取得
-                for i in 0...(myPlanIDs.count - 1) {
-                    self.fetchMyPlanDetails(index: i, completion: {
-                        // estimatedTimeから文字列に
-                        let formatter = DateFormatter()
-                        formatter.timeStyle = .short
-                        formatter.dateStyle = .full
-                        formatter.timeZone = NSTimeZone.local
-                        formatter.locale = Locale(identifier: "ja_JP")
-                        self.dateAndTimes[i] = formatter.string(from: estimatedTimes[i])
-                        
-                        // 参加代表者のIDから名前を取得
-                        self.fetchParticipantName(index: i, completion: {
-                            
-                            // 完了チェック
-                            self.fetchPlansCheck[i] = true
-                            
-                            // UserDefaultsに保存
-                            userDefaults.set(myPlanIDs, forKey: "PlanIDs")
-                            userDefaults.set(self.dateAndTimes, forKey: "DateAndTimes")
-                            userDefaults.set(estimatedTimes, forKey: "EstimatedTimes")
-                            userDefaults.set(self.planTitles, forKey: "PlanTitles")
-                            userDefaults.set(self.participantNames, forKey: "ParticipantNames")
-                            userDefaults.set(self.numberOfParticipants, forKey: "NumberOfParticipants")
-                            userDefaults.set(self.places, forKey: "Places")
-                            userDefaults.set(self.lats, forKey: "lats")
-                            userDefaults.set(self.lons, forKey: "lons")
-                        })
-                    })
+                // データベースの予定IDが空のとき
+                else {
+                    print("データベースに予定なし")
+                    
+                    // タイマーを止める
+                    if let workingTimer = self.fetchPlansTimer {
+                        workingTimer.invalidate()
+                    }
                 }
             })
         }
@@ -652,7 +663,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     }
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return dateAndTimes.count
+        return myPlanIDs.count
     }
     
     func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
@@ -669,7 +680,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         let calendar = Calendar(identifier: .japanese)
         
         // 予定サンプルが消されていないとき
-        if planTitles.contains("予定サンプル") == true {
+        if myPlanIDs.contains("samplePlan") == true {
             // サンプル以外の予定が登録されているとき
             if estimatedTimes.count >= 2 {
                 print("サンプルあり、サンプル以外の予定あり")
@@ -702,11 +713,15 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                     else if components.month! <= 0 && components.day! <= 0 && components.hour! <= 0 && components.minute! <= 0 && components.second! <= 0 {
                         print("予定時刻を過ぎた")
                         
+                        displayCountdown()
+                        
                         if countdownView.isHidden == false {
                             // 背景を赤にする
                             countdownView.backgroundColor = UIColor.init(hue: 0.03, saturation: 0.9, brightness: 0.9, alpha: 1.0)
                             
                             countdownLabel.text = "00:00"
+                            countdownDateAndTimeLabel.text = dateAndTimes[index]
+                            countdownPlanTitleLabel.text = planTitles[index]
                         }
                     }
                 }
@@ -752,11 +767,15 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                     else if components.month! <= 0 && components.day! <= 0 && components.hour! <= 0 && components.minute! <= 0 && components.second! <= 0 {
                         print("予定時刻を過ぎた")
                         
+                        displayCountdown()
+                        
                         if countdownView.isHidden == false {
                             // 背景を赤にする
                             countdownView.backgroundColor = UIColor.init(hue: 0.03, saturation: 0.9, brightness: 0.9, alpha: 1.0)
                             
                             countdownLabel.text = "00:00"
+                            countdownDateAndTimeLabel.text = dateAndTimes[index]
+                            countdownPlanTitleLabel.text = planTitles[index]
                         }
                     }
                 }
@@ -806,9 +825,9 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         planTable.reloadData()
     }
     
-    func fetchRequests(id: String) {
+    func fetchRequests() {
         
-        let recordID = CKRecord.ID(recordName: "accountID-\(id)")
+        let recordID = CKRecord.ID(recordName: "accountID-\(myID!)")
         
         publicDatabase.fetch(withRecordID: recordID, completionHandler: {(record, error) in
             
@@ -834,7 +853,30 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                     self.fetchedRequests.remove(at: index)
                 }
             }
+            
+            self.fetchRequestsCheck = true
         })
+    }
+    
+    @objc func completedFetchingRequests() {
+        print("fetchingRequests")
+        
+        if fetchRequestsCheck == true {
+            
+            print("completeFetchingRequests!")
+            
+            // タイマーを止める
+            if let workingTimer = fetchRequestsTimer {
+                workingTimer.invalidate()
+            }
+            
+            // 友だち申請されている場合は遷移
+            if fetchedRequests.isEmpty == false {
+                self.performSegue(withIdentifier: "toRequestedVC", sender: nil)
+            } else {
+                print("友だち申請なし")
+            }
+        }
     }
     
     func fetchFriendIDs(id: String) {
@@ -964,7 +1006,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     @objc func completedFetchingPlans() {
         print("fetchingPlans")
         
-        if fetchPlansCheck.contains(false) == false {
+        if fetchPlansCheck.isEmpty == false && fetchPlansCheck.contains(false) == false {
             
             print("completedFetchingPlans!")
             
@@ -974,7 +1016,9 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             }
             
             // UI更新
-            planTable.reloadData()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: {
+                self.planTable.reloadData()
+            })
         }
     }
     

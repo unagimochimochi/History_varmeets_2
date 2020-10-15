@@ -90,15 +90,15 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        
+                
         let now = Date()
         let calendar = Calendar(identifier: .japanese)
         
         if estimatedTimesSort.isEmpty == false {
-            
+
             // 予定サンプルが消されていないとき
-            let referenceDate = Date(timeIntervalSinceReferenceDate: 0.0)    // 00:00:00 UTC on 1 January 2001
-            if estimatedTimesSort[0] == referenceDate {
+            if myPlanIDs.contains("samplePlan") {
+
                 // サンプル以外の予定が登録されているとき
                 if estimatedTimesSort.count >= 2 {
                     
