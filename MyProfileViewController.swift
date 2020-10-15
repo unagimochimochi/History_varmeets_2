@@ -12,6 +12,9 @@ class MyProfileViewController: UIViewController {
     
     var fetchedBio: String?
     
+    var timer: Timer!
+    var check = false
+    
     @IBOutlet weak var idLabel: UILabel!
     @IBOutlet weak var nameLabel: UILabel!
     @IBOutlet weak var icon: UIImageView!
@@ -26,21 +29,11 @@ class MyProfileViewController: UIViewController {
         icon.layer.cornerRadius = icon.bounds.width / 2 // 丸くする
         icon.layer.masksToBounds = true // 丸の外側を消す
         
-        if let id = myID {
-            fetchMyBio(myID: id)
-            
-            // 1秒後に処理
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                if let bio = self.fetchedBio {
-                    if bio == "" {
-                        self.bioLabel.text = "自己紹介が未入力です"
-                    } else {
-                        self.bioLabel.text = bio
-                        self.bioLabel.textColor = .black
-                    }
-                }
-            }
-        }
+        fetchMyBio()
+        
+        // タイマースタート
+        timer = Timer.scheduledTimer(timeInterval: 0.5, target: self, selector: #selector(completeFetchingMyBio), userInfo: nil, repeats: true)
+        
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -97,25 +90,46 @@ class MyProfileViewController: UIViewController {
         }
     }
 
-    func fetchMyBio(myID: String) {
+    func fetchMyBio() {
         // デフォルトコンテナ（iCloud.com.gmail.mokamokayuuyuu.varmeets）のパブリックデータベースにアクセス
         let publicDatabase = CKContainer.default().publicCloudDatabase
         
-        let recordID = CKRecord.ID(recordName: "accountID-\(myID)")
+        let recordID = CKRecord.ID(recordName: "accountID-\(myID!)")
         
         publicDatabase.fetch(withRecordID: recordID, completionHandler: {(record, error) in
+            
             if let error = error {
                 print("Bio取得エラー: \(error)")
                 return
             }
             
-            else if let bio = record?.value(forKey: "accountBio") as? String {
+            if let bio = record?.value(forKey: "accountBio") as? String {
                 print("Bio取得成功")
                 self.fetchedBio = bio
             } else {
                 print("クラウドのBioが空")
             }
+            
+            self.check = true
         })
+    }
+    
+    @objc func completeFetchingMyBio() {
+        print("fetchingBio")
+        
+        if check == true {
+            
+            print("completedFetchingMyBio!")
+            
+            // タイマーを止める
+            if let workingTimer = timer {
+                workingTimer.invalidate()
+            }
+            
+            // bioを表示
+            bioLabel.text = fetchedBio
+            bioLabel.textColor = .black
+        }
     }
     
 }
