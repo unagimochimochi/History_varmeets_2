@@ -494,16 +494,16 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
                 if let index = favAddresses.index(of: annotation.title ?? "") {
                     
                     favPlaces.remove(at: index)
-                    favUserDefaults.set(favPlaces, forKey: "favPlaces")
+                    userDefaults.set(favPlaces, forKey: "favPlaces")
                     
                     favAddresses.remove(at: index)
-                    favUserDefaults.set(favAddresses, forKey: "favAddresses")
+                    userDefaults.set(favAddresses, forKey: "favAddresses")
                     
                     favLats.remove(at: index)
-                    favUserDefaults.set(favLats, forKey: "favLats")
+                    userDefaults.set(favLats, forKey: "favLats")
                     
                     favLons.remove(at: index)
-                    favUserDefaults.set(favLons, forKey: "favLons")
+                    userDefaults.set(favLons, forKey: "favLons")
                     
                     let dialog = UIAlertController(title: "お気に入り解除", message: "\(annotation.title ?? "")をお気に入りから削除しました。", preferredStyle: .alert)
                     // OKボタン
@@ -523,16 +523,16 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
             // お気に入り登録
             else {
                 favPlaces.append(annotation.title ?? "")
-                favUserDefaults.set(favPlaces, forKey: "favPlaces")
+                userDefaults.set(favPlaces, forKey: "favPlaces")
                 
                 favAddresses.append(placeAddressLabel.text ?? "")
-                favUserDefaults.set(favAddresses, forKey: "favAddresses")
+                userDefaults.set(favAddresses, forKey: "favAddresses")
                 
                 favLats.append(annotation.coordinate.latitude)
-                favUserDefaults.set(favLats, forKey: "favLats")
+                userDefaults.set(favLats, forKey: "favLats")
                 
                 favLons.append(annotation.coordinate.longitude)
-                favUserDefaults.set(favLons, forKey: "favLons")
+                userDefaults.set(favLons, forKey: "favLons")
                 
                 let dialog = UIAlertController(title: "お気に入り登録", message: "\(annotation.title ?? "")をお気に入りに追加しました。", preferredStyle: .alert)
                 // OKボタン
@@ -562,16 +562,16 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
                     if let index = favPlaces.index(of: selectedSearchAnnotationTitle) {
                         
                         favPlaces.remove(at: index)
-                        favUserDefaults.set(favPlaces, forKey: "favPlaces")
+                        userDefaults.set(favPlaces, forKey: "favPlaces")
                         
                         favAddresses.remove(at: index)
-                        favUserDefaults.set(favAddresses, forKey: "favAddresses")
+                        userDefaults.set(favAddresses, forKey: "favAddresses")
                         
                         favLats.remove(at: index)
-                        favUserDefaults.set(favLats, forKey: "favLats")
+                        userDefaults.set(favLats, forKey: "favLats")
                         
                         favLons.remove(at: index)
-                        favUserDefaults.set(favLons, forKey: "favLons")
+                        userDefaults.set(favLons, forKey: "favLons")
                         
                         let dialog = UIAlertController(title: "お気に入り解除", message: "\(selectedSearchAnnotationTitle)をお気に入りから削除しました。", preferredStyle: .alert)
                         // OKボタン
@@ -591,16 +591,16 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
                 // お気に入り登録
                 else {
                     favPlaces.append(selectedSearchAnnotationTitle)
-                    favUserDefaults.set(favPlaces, forKey: "favPlaces")
+                    userDefaults.set(favPlaces, forKey: "favPlaces")
                     
                     favAddresses.append(placeAddressLabel.text ?? "")
-                    favUserDefaults.set(favAddresses, forKey: "favAddresses")
+                    userDefaults.set(favAddresses, forKey: "favAddresses")
                     
                     favLats.append(selectedSearchAnnotation.coordinate.latitude)
-                    favUserDefaults.set(favLats, forKey: "favLats")
+                    userDefaults.set(favLats, forKey: "favLats")
                     
                     favLons.append(selectedSearchAnnotation.coordinate.longitude)
-                    favUserDefaults.set(favLons, forKey: "favLons")
+                    userDefaults.set(favLons, forKey: "favLons")
                     
                     let dialog = UIAlertController(title: "お気に入り登録", message: "\(annotation.title ?? "")をお気に入りに追加しました。", preferredStyle: .alert)
                     // OKボタン

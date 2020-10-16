@@ -72,6 +72,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             
             record["accountID"] = id as NSString
             record["accountName"] = name as NSString
+            record["planIDs"] = ["samplePlan"] as [String]
             record["requestedAccountID_01"] = "NO" as NSString
             record["requestedAccountID_02"] = "NO" as NSString
             record["requestedAccountID_03"] = "NO" as NSString
@@ -120,17 +121,18 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             
             let requestedIDs = requestedVC.requestedIDs
             
+            // 新たな配列に現在の友だち一覧を代入
             friendIDsToMe = friendIDs
             
-            var count1 = 0
-            while count1 < requestedIDs.count {
+            var count = 0
+            while count < requestedIDs.count {
                 
-                if (requestedVC.requestedTableView.cellForRow(at: IndexPath(row: count1, section: 0)) as? RequestedCell)!.approval == true {
+                if (requestedVC.requestedTableView.cellForRow(at: IndexPath(row: count, section: 0)) as? RequestedCell)!.approval == true {
                     // 友だち一覧に申請者を追加
-                    friendIDsToMe.append(requestedIDs[count1])
+                    friendIDsToMe.append(requestedIDs[count])
                 }
                 
-                count1 += 1
+                count += 1
             }
                 
             // 自分のレコードの検索条件を作成
@@ -161,59 +163,65 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                 }
             })
             
-            var count2 = 0
-            while count2 < requestedIDs.count {
+            // 友だちの友だち一覧を格納する配列
+            var fetchedFriendFriendIDs = [[String]]()
+            // 初期値に空の配列を代入
+            for _ in 0...(requestedIDs.count - 1) {
+                fetchedFriendFriendIDs.append([String]())
+            }
+            
+            // 友だちの友だち一覧を更新
+            for i in 0...(requestedIDs.count - 1) {
                 
-                // 友だちの友だち一覧を格納する配列
-                var fetchedFriendFriendIDs = [String]()
-                
-                let friendRecordID = CKRecord.ID(recordName: "accountID-\(requestedIDs[count2])")
+                let friendRecordID = CKRecord.ID(recordName: "accountID-\(requestedIDs[i])")
                 
                 publicDatabase.fetch(withRecordID: friendRecordID, completionHandler: {(record, error) in
+                    
                     if let error = error {
-                        print("友だちの友だち一覧取得エラー: \(error)")
+                        print("\(requestedIDs[i])の友だち一覧取得エラー: \(error)")
                         return
                     }
                     
                     if let friendFriendIDs = record?.value(forKey: "friends") as? [String] {
+                        
                         for friendFriendID in friendFriendIDs {
-                            fetchedFriendFriendIDs.append(friendFriendID)
+                            fetchedFriendFriendIDs[i].append(friendFriendID)
                         }
-                        print(fetchedFriendFriendIDs)
                     }
                 })
                 
                 // 友だちの検索条件を作成
-                let predicate2 = NSPredicate(format: "accountID == %@", argumentArray: [requestedIDs[count2]])
+                let predicate2 = NSPredicate(format: "accountID == %@", argumentArray: [requestedIDs[i]])
                 let query2 = CKQuery(recordType: "Accounts", predicate: predicate2)
                 
-                if (requestedVC.requestedTableView.cellForRow(at: IndexPath(row: count2, section: 0)) as? RequestedCell)!.approval == true {
+                if (requestedVC.requestedTableView.cellForRow(at: IndexPath(row: i, section: 0)) as? RequestedCell)!.approval == true {
                     // 友だちの友だち一覧に自分を追加
-                    fetchedFriendFriendIDs.append(myID!)
+                    fetchedFriendFriendIDs[i].append(myID!)
                 }
                 
                 publicDatabase.perform(query2, inZoneWith: nil, completionHandler: {(records, error) in
+                    
                     if let error = error {
-                        print("\(count2.description)番目の友だちの友だち一覧更新エラー1: \(error)")
+                        print("\(requestedIDs[i])の友だち一覧更新エラー1: \(error)")
                         return
                     }
                     
                     for record in records! {
-                        record["friends"] = fetchedFriendFriendIDs as [String]
+                        
+                        record["friends"] = fetchedFriendFriendIDs[i] as [String]
                         
                         self.publicDatabase.save(record, completionHandler: {(record, error) in
+                            
                             if let error = error {
-                                print("\(count2.description)番目の友だちの友だち一覧更新エラー2: \(error)")
+                                print("\(requestedIDs[i])の友だち一覧更新エラー2: \(error)")
                                 return
                             }
-                            print("\(count2.description)番目の友だちの友だち一覧更新成功")
+                            
+                            print("\(requestedIDs[i])の友だち一覧更新成功")
                         })
                     }
                 })
-                
-                count2 += 1
             }
-            
         }
     }
     
