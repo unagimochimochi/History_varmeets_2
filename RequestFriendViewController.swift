@@ -15,6 +15,7 @@ class RequestFriendViewController: UIViewController {
     var friendBio: String?
     
     var requestedAccounts = [String]()
+    var existingFriendIDs = [String]()
 
     @IBOutlet weak var idLabel: UILabel!
     @IBOutlet weak var nameLabel: UILabel!
@@ -51,15 +52,25 @@ class RequestFriendViewController: UIViewController {
         requestButton.layer.cornerRadius = 8
         requestButton.layer.masksToBounds = true
         
+        // すでに申請済みのとき
         if requestedAccounts.contains(myID!) {
             requestButton.setTitle("申請をキャンセル", for: .normal)
             requestButton.setTitleColor(.white, for: .normal)
             requestButton.backgroundColor = UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0)
         } else {
-            requestButton.setTitle("友だち申請", for: .normal)
-            requestButton.setTitleColor(UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0), for: .normal)
-            requestButton.layer.borderColor = UIColor.orange.cgColor
-            requestButton.layer.borderWidth = 1
+            // すでに友だちのとき
+            if existingFriendIDs.contains(friendID!) {
+                requestButton.setTitle("すでに友だちです", for: .normal)
+                requestButton.setTitleColor(.systemGray, for: .normal)
+                requestButton.layer.borderColor = UIColor.gray.cgColor
+                requestButton.layer.borderWidth = 1
+                requestButton.isEnabled = false
+            } else {
+                requestButton.setTitle("友だち申請", for: .normal)
+                requestButton.setTitleColor(UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0), for: .normal)
+                requestButton.layer.borderColor = UIColor.orange.cgColor
+                requestButton.layer.borderWidth = 1
+            }
         }
     }
 

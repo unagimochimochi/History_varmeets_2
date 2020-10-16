@@ -10,6 +10,10 @@ import CloudKit
 
 class AddFriendViewController: UIViewController, UISearchBarDelegate, UITableViewDelegate, UITableViewDataSource {
     
+    let publicDatabase = CKContainer.default().publicCloudDatabase
+    
+    var existingFriendIDs = [String]()
+    
     var fetchedFriendID: String?
     var fetchedFriendName: String?
     var fetchedFriendBio: String?
@@ -25,6 +29,8 @@ class AddFriendViewController: UIViewController, UISearchBarDelegate, UITableVie
         friendsSearchBar.delegate = self
         resultsTableView.delegate = self
         resultsTableView.dataSource = self
+        
+        fetchMyFriends()
     }
     
     @IBAction func cancel(_ sender: Any) {
@@ -100,12 +106,11 @@ class AddFriendViewController: UIViewController, UISearchBarDelegate, UITableVie
     }
 
     func fetchFriendInfo(friendID: String) {
-        // デフォルトコンテナ（iCloud.com.gmail.mokamokayuuyuu.varmeets）のパブリックデータベースにアクセス
-        let publicDatabase = CKContainer.default().publicCloudDatabase
-        
+
         let recordID = CKRecord.ID(recordName: "accountID-\(friendID)")
         
         publicDatabase.fetch(withRecordID: recordID, completionHandler: {(record, error) in
+            
             if let error = error {
                 print("友だちの情報取得エラー: \(error)")
                 return
@@ -131,6 +136,27 @@ class AddFriendViewController: UIViewController, UISearchBarDelegate, UITableVie
         })
     }
     
+    func fetchMyFriends() {
+        
+        let recordID = CKRecord.ID(recordName: "accountID-\(myID!)")
+        
+        publicDatabase.fetch(withRecordID: recordID, completionHandler: {(record, error) in
+            
+            if let error = error {
+                print("友だち一覧取得エラー: \(error)")
+                return
+            }
+            
+            if let friendIDs = record?.value(forKey: "friends") as? [String] {
+                
+                for friendID in friendIDs {
+                    self.existingFriendIDs.append(friendID)
+                }
+            }
+        })
+        
+    }
+    
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         
         guard let identifier = segue.identifier else {
@@ -145,6 +171,7 @@ class AddFriendViewController: UIViewController, UISearchBarDelegate, UITableVie
             requestFriendVC.friendBio = fetchedFriendBio
             
             requestFriendVC.requestedAccounts = fetchedRequestedAccounts
+            requestFriendVC.existingFriendIDs = existingFriendIDs
         }
         
     }
