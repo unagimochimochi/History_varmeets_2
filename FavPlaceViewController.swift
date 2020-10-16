@@ -20,6 +20,9 @@ class FavPlaceViewController: UIViewController, MKMapViewDelegate {
 
     @IBOutlet weak var mapView: MKMapView!
     
+    @IBOutlet weak var favButton: UIButton!
+    @IBOutlet weak var addPlanButton: UIButton!
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -67,6 +70,22 @@ class FavPlaceViewController: UIViewController, MKMapViewDelegate {
                 })
             }
         }
+        
+        // お気に入りボタン
+        favButton.setTitleColor(.white, for: .normal)
+        favButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 15.0)
+        favButton.backgroundColor = .orange
+        favButton.layer.masksToBounds = true
+        favButton.layer.cornerRadius = 8
+        
+        // 予定を追加ボタン
+        addPlanButton.setTitleColor(UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0), for: .normal)
+        addPlanButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 15.0)
+        addPlanButton.backgroundColor = .white
+        addPlanButton.layer.borderColor = UIColor.orange.cgColor
+        addPlanButton.layer.borderWidth = 1
+        addPlanButton.layer.masksToBounds = true
+        addPlanButton.layer.cornerRadius = 8
     }
     
     func initMap() {
@@ -86,5 +105,66 @@ class FavPlaceViewController: UIViewController, MKMapViewDelegate {
         annotationView.canShowCallout = true
         
         return annotationView
+    }
+    
+    @IBAction func tappedFavButton(_ sender: Any) {
+        
+        // すでにお気に入り登録されているとき
+        if favAddresses.contains(annotation.subtitle!) {
+            
+            if let index = favAddresses.index(of: annotation.subtitle!) {
+                
+                favPlaces.remove(at: index)
+                userDefaults.set(favPlaces, forKey: "favPlaces")
+                
+                favAddresses.remove(at: index)
+                userDefaults.set(favAddresses, forKey: "favAddresses")
+                
+                favLats.remove(at: index)
+                userDefaults.set(favLats, forKey: "favLats")
+                                    
+                favLons.remove(at: index)
+                userDefaults.set(favLons, forKey: "favLons")
+                
+                let dialog = UIAlertController(title: "お気に入り解除", message: "\(annotation.title!)をお気に入りから削除しました。", preferredStyle: .alert)
+                // OKボタン
+                dialog.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+                // ダイアログを表示
+                self.present(dialog, animated: true, completion: nil)
+                
+                // ボタンの見た目をスイッチ
+                favButton.setTitle("お気に入り登録", for: .normal)
+                favButton.setTitleColor(UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0), for: .normal)
+                favButton.backgroundColor = .white
+                favButton.layer.borderColor = UIColor.orange.cgColor
+                favButton.layer.borderWidth = 1
+            }
+        }
+        
+        // お気に入り登録
+        else {
+            favPlaces.append(annotation.title!)
+            userDefaults.set(favPlaces, forKey: "favPlaces")
+            
+            favAddresses.append(annotation.subtitle!)
+            userDefaults.set(favAddresses, forKey: "favAddresses")
+                            
+            favLats.append(annotation.coordinate.latitude)
+            userDefaults.set(favLats, forKey: "favLats")
+                            
+            favLons.append(annotation.coordinate.longitude)
+            userDefaults.set(favLons, forKey: "favLons")
+                            
+            let dialog = UIAlertController(title: "お気に入り登録", message: "\(annotation.title!)をお気に入りに追加しました。", preferredStyle: .alert)
+            // OKボタン
+            dialog.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+            // ダイアログを表示
+            self.present(dialog, animated: true, completion: nil)
+            
+            // ボタンの見た目をスイッチ
+            favButton.setTitle("お気に入り解除", for: .normal)
+            favButton.setTitleColor(.white, for: .normal)
+            favButton.backgroundColor = .orange
+        }
     }
 }
