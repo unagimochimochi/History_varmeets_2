@@ -167,4 +167,18 @@ class FavPlaceViewController: UIViewController, MKMapViewDelegate {
             favButton.backgroundColor = .orange
         }
     }
+    
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        
+        guard let identifier = segue.identifier else {
+            return
+        }
+        
+        if identifier == "FavPlaceVCtoAddPlanVC" {
+            let addPlanVC = segue.destination as! AddPlanViewController
+            addPlanVC.place = annotation.title!
+            addPlanVC.lat = lat!.description
+            addPlanVC.lon = lon!.description
+        }
+    }
 }
