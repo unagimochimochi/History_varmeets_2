@@ -35,6 +35,10 @@ class AddPlanViewController: UIViewController, UITableViewDelegate, UITableViewD
     
     var planItem = ["日時","参加者","場所"]
     
+    var inputTimer: Timer!
+    var inputCheck = [false, false, false, false]    // タイトル、日時、参加者、場所
+    var estimatedTime: Date?    // チェック用
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -44,6 +48,22 @@ class AddPlanViewController: UIViewController, UITableViewDelegate, UITableViewD
         
         if let planTitle = self.planTitle {
             self.planTitleTextField.text = planTitle
+        }
+        
+        // 保存ボタンをデフォルトで無効にする
+        saveButton.isEnabled = false
+        saveButton.image = UIImage(named: "SaveButton_gray")
+        
+        // タイマースタート
+        inputTimer = Timer.scheduledTimer(timeInterval: 0.5, target: self, selector: #selector(completedInputing), userInfo: nil, repeats: true)
+    }
+    
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        
+        // タイマーを止める
+        if let workingTimer = inputTimer {
+            workingTimer.invalidate()
         }
     }
     
@@ -89,12 +109,59 @@ class AddPlanViewController: UIViewController, UITableViewDelegate, UITableViewD
         addPlanTable.reloadData()
     }
     
+    @objc func completedInputing() {
+        print("Check input")
+        
+        // タイトル（0）
+        if let titleText = planTitleTextField.text {
+            if titleText.count >= 1 {
+                inputCheck[0] = true
+            } else {
+                inputCheck[0] = false
+            }
+        }
+        
+        // 日時（1）
+        if estimatedTime != nil {
+            inputCheck[1] = true
+        } else {
+            inputCheck[1] = false
+        }
+        
+        // 参加者（2）
+        if participantIDs.isEmpty == false {
+            inputCheck[2] = true
+        } else {
+            inputCheck[2] = false
+        }
+        
+        // 場所（3）
+        if place != nil {
+            inputCheck[3] = true
+        } else {
+            inputCheck[3] = false
+        }
+        
+        if inputCheck.contains(false) == false {
+            // 保存ボタンを有効にする
+            saveButton.isEnabled = true
+            saveButton.image = UIImage(named: "SaveButton")
+            
+        } else {
+            // 保存ボタンを無効にする
+            saveButton.isEnabled = false
+            saveButton.image = UIImage(named: "SaveButton_gray")
+        }
+    }
+    
     func tableView(_ tableView: UITableView, cellForRowAt indexPath:IndexPath) -> UITableViewCell {
         
         if indexPath.row == 0 {
             let cell = tableView.dequeueReusableCell(withIdentifier: "DateAndTimeCell", for:indexPath) as! DateAndTimeCell
             cell.textLabel?.text = planItem[indexPath.row]
             cell.displayDateAndTimeTextField.text = dateAndTime
+            
+            estimatedTime = cell.estimatedTime    // 入力チェック用
             
             return cell
             
@@ -208,6 +275,10 @@ class AddPlanViewController: UIViewController, UITableViewDelegate, UITableViewD
                 let searchParticipantVC = segue.destination as! SearchParticipantViewController
                 self.dateAndTime = (addPlanTable.cellForRow(at: IndexPath(row: 0, section: 0)) as? DateAndTimeCell)?.displayDateAndTimeTextField.text ?? ""
                 searchParticipantVC.dateAndTime = self.dateAndTime
+                
+                // すでに選択済みだった際に重複してしまうため取り除く
+                participantIDs.removeAll()
+                participantNames.removeAll()
             }
         }
         
