@@ -13,7 +13,7 @@ class MyProfileViewController: UIViewController {
     var fetchedBio: String?
     
     var timer: Timer!
-    var check = false
+    var check = 0
     
     @IBOutlet weak var idLabel: UILabel!
     @IBOutlet weak var nameLabel: UILabel!
@@ -106,18 +106,18 @@ class MyProfileViewController: UIViewController {
             if let bio = record?.value(forKey: "accountBio") as? String {
                 print("Bio取得成功")
                 self.fetchedBio = bio
+                self.check = 1
             } else {
                 print("クラウドのBioが空")
+                self.check = 2
             }
-            
-            self.check = true
         })
     }
     
     @objc func completeFetchingMyBio() {
         print("fetchingBio")
         
-        if check == true {
+        if check != 0 {
             
             print("completedFetchingMyBio!")
             
@@ -126,9 +126,17 @@ class MyProfileViewController: UIViewController {
                 workingTimer.invalidate()
             }
             
-            // bioを表示
-            bioLabel.text = fetchedBio
-            bioLabel.textColor = .black
+            if check == 1 {
+                // bioを表示
+                bioLabel.text = fetchedBio
+                bioLabel.textColor = .black
+            }
+            
+            else if check == 2 {
+                // bioが空であることを表示
+                bioLabel.text = "自己紹介が未入力です"
+                bioLabel.textColor = .systemGray
+            }
         }
     }
     

@@ -92,5 +92,19 @@ class FavViewController: UIViewController, UISearchBarDelegate, UITableViewDeleg
             tableView.deleteRows(at: [indexPath], with: .fade)
         }
     }
+    
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        
+        guard let identifier = segue.identifier else {
+            return
+        }
+        
+        if identifier == "toFavPlaceVC" {
+            let favPlaceVC = segue.destination as! FavPlaceViewController
+            favPlaceVC.place = favPlaces[(favTableView.indexPathForSelectedRow?.row)!]
+            favPlaceVC.lat = favLats[(favTableView.indexPathForSelectedRow?.row)!]
+            favPlaceVC.lon = favLons[(favTableView.indexPathForSelectedRow?.row)!]
+        }
+    }
 
 }
