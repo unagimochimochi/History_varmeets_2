@@ -42,6 +42,9 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
     let publicDatabase = CKContainer.default().publicCloudDatabase
     
     var meetingTimer: Timer!
+    var meetingPlace: String?
+    var meetingLocation: CLLocation?
+    var meetingAnnotation = MKPointAnnotation()
     var participantIDs = [String]()
     var participantLocations = [CLLocation]()
     var participantAnnotations = [MKPointAnnotation]()
@@ -79,9 +82,11 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
         locationManager.delegate = self
         
         // 位置情報取得の許可を得る
-        locationManager.requestWhenInUseAuthorization()
+        locationManager.requestAlwaysAuthorization()
         // 位置情報の更新を指示
         locationManager.startUpdatingLocation()
+        // バックグラウンドでの位置情報更新を許可
+        locationManager.allowsBackgroundLocationUpdates = true
         
         initMap()
 
@@ -127,8 +132,8 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
                                         self.participantAnnotations.append(MKPointAnnotation())
                                         let first2D = CLLocationCoordinate2D(latitude: 35.6809591, longitude: 139.7673068)
                                         self.participantAnnotations[i].coordinate = first2D
-                                        self.mapView.addAnnotation(self.participantAnnotations[i])
                                         self.participantAnnotations[i].title = self.participantIDs[i]
+                                        self.mapView.addAnnotation(self.participantAnnotations[i])
                                     }
                                     
                                     // タイマースタート
@@ -136,6 +141,21 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
                                         guard let `self` = self else { return }
                                         self.meetingTimer = Timer.scheduledTimer(timeInterval: 1, target: self, selector: #selector(self.meeting), userInfo: nil, repeats: true)
                                     }
+                                }
+                                
+                                // 待ち合わせ場所にピンを立てる
+                                let loc2D = self.meetingLocation?.coordinate
+                                self.meetingAnnotation.coordinate = loc2D!
+                                self.meetingAnnotation.title = self.meetingPlace
+                                self.mapView.addAnnotation(self.meetingAnnotation)
+                                
+                                // メインスレッドで処理
+                                DispatchQueue.main.async { [weak self] in
+                                    guard let `self` = self else { return }
+                                    // ピンを最初から選択状態にする
+                                    self.mapView.selectAnnotation(self.meetingAnnotation, animated: true)
+                                    // ピンを中心に表示
+                                    self.mapView.setCenter(loc2D!, animated: true)
                                 }
                             })
                         }
@@ -170,6 +190,7 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
                                     self.participantAnnotations.append(MKPointAnnotation())
                                     let first2D = CLLocationCoordinate2D(latitude: 35.6809591, longitude: 139.7673068)
                                     self.participantAnnotations[i].coordinate = first2D
+                                    self.participantAnnotations[i].title = self.participantIDs[i]
                                     self.mapView.addAnnotation(self.participantAnnotations[i])
                                 }
                                 
@@ -178,6 +199,21 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
                                     guard let `self` = self else { return }
                                     self.meetingTimer = Timer.scheduledTimer(timeInterval: 1, target: self, selector: #selector(self.meeting), userInfo: nil, repeats: true)
                                 }
+                            }
+                            
+                            // 待ち合わせ場所にピンを立てる
+                            let loc2D = self.meetingLocation?.coordinate
+                            self.meetingAnnotation.coordinate = loc2D!
+                            self.meetingAnnotation.title = self.meetingPlace
+                            self.mapView.addAnnotation(self.meetingAnnotation)
+                            
+                            // メインスレッドで処理
+                            DispatchQueue.main.async { [weak self] in
+                                guard let `self` = self else { return }
+                                // ピンを最初から選択状態にする
+                                self.mapView.selectAnnotation(self.meetingAnnotation, animated: true)
+                                // ピンを中心に表示
+                                self.mapView.setCenter(loc2D!, animated: true)
                             }
                         })
                     }
@@ -312,7 +348,9 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
         
         // 配列が空のとき（ロングタップでピンを立てたとき）
         if searchAnnotationArray.isEmpty == true && self.annotation.title != nil {
+            
             let annotationView = MKPinAnnotationView(annotation: annotation, reuseIdentifier: nil)
+            
             // 吹き出しを表示
             annotationView.canShowCallout = true
             // 吹き出しの右側にボタンをセット
@@ -323,7 +361,9 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
         
         // 配列が空ではないとき（検索でピンを立てたとき）
         else if searchAnnotationArray.isEmpty == false {
+            
             let searchAnnotationView = MKPinAnnotationView(annotation: searchAnnotationArray as? MKAnnotation, reuseIdentifier: nil)
+
             // 吹き出しを表示
             searchAnnotationView.canShowCallout = true
             // 吹き出しの右側にボタンをセット
@@ -654,6 +694,14 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
             if let error = error {
                 print("予定参加者取得エラー: \(error)")
                 return
+            }
+            
+            if let placeName = record?.value(forKey: "placeName") as? String {
+                self.meetingPlace = placeName
+            }
+            
+            if let location = record?.value(forKey: "placeLatAndLon") as? CLLocation {
+                self.meetingLocation = location
             }
             
             if let authorID = record?.value(forKey: "authorID") as? String {

@@ -5,7 +5,6 @@
 //  Created by 持田侑菜 on 2020/06/05.
 //
 
-import Foundation
 import UIKit
 
 class FriendProfileViewController: UIViewController{
@@ -36,5 +35,18 @@ class FriendProfileViewController: UIViewController{
         }
         
         self.navigationItem.title = receiveName
+    }
+    
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        
+        guard let idetifier = segue.identifier else {
+            return
+        }
+        
+        if idetifier == "FriendProfileVCtoAddPlanVC" {
+            let addPlanVC = segue.destination as! AddPlanViewController
+            addPlanVC.participantIDs.append(receiveID)
+            addPlanVC.participantNames.append(receiveName)
+        }
     }
 }
