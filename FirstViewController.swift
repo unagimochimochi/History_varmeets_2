@@ -14,6 +14,7 @@ class FirstViewController: UIViewController, UITextFieldDelegate {
     
     var id: String?
     var name: String?
+    var password: String?
     
     @IBOutlet weak var idTextField: UITextField!
     @IBOutlet weak var idLabel: UILabel!
@@ -27,6 +28,8 @@ class FirstViewController: UIViewController, UITextFieldDelegate {
     @IBOutlet weak var eulaButton: UIButton!
     @IBOutlet weak var ppButton: UIButton!
     
+    @IBOutlet weak var forExistingUserButton: UIButton!
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -36,23 +39,12 @@ class FirstViewController: UIViewController, UITextFieldDelegate {
         
         fetchExistingIDs()
         
-        // 使用許諾契約ボタン
-        eulaButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 12.0)
-        eulaButton.setTitleColor(UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0), for: .normal)
-        eulaButton.backgroundColor = .white
-        eulaButton.layer.borderColor = UIColor.orange.cgColor
-        eulaButton.layer.borderWidth = 1
-        eulaButton.layer.cornerRadius = 8
-        eulaButton.layer.masksToBounds = true
-        
+        // 使用契約許諾ボタン
+        setAppearance(button: eulaButton)
         // プライバシーポリシーボタン
-        ppButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 12.0)
-        ppButton.setTitleColor(UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0), for: .normal)
-        ppButton.backgroundColor = .white
-        ppButton.layer.borderColor = UIColor.orange.cgColor
-        ppButton.layer.borderWidth = 1
-        ppButton.layer.cornerRadius = 8
-        ppButton.layer.masksToBounds = true
+        setAppearance(button: ppButton)
+        // アカウントをお持ちの方はこちらボタン
+        setAppearance(button: forExistingUserButton)
         
         // ID入力時の判定
         idTextField.addTarget(self, action: #selector(idTextEditingChanged), for: UIControl.Event.editingChanged)
@@ -249,13 +241,33 @@ class FirstViewController: UIViewController, UITextFieldDelegate {
     func textFieldShouldReturn(_ textField: UITextField) -> Bool {
         textField.endEditing(true)
         
-        // ID、パスワードの入力条件をクリアしていればDoneボタンを有効にする
+        // ID、名前、パスワードの入力条件をクリアしていれば続行ボタンを有効にする
         if check.contains(false) == false {
             continueButton.isEnabled = true
             continueButton.image = UIImage(named: "ContinueButton")
         }
         
         return true
+    }
+    
+    // Safariで使用許諾契約を開く
+    @IBAction func openEULA(_ sender: Any) {
+        
+        let url = URL(string: "https://docs.google.com/document/d/1dtr_aG0XdNmxUX1YBFORL9LBbFEmoOLsN1THL6C0Y_Q/edit?usp=sharing")!
+        
+        if UIApplication.shared.canOpenURL(url) {
+            UIApplication.shared.open(url)
+        }
+    }
+    
+    // Safariでプライバシーポリシーを開く
+    @IBAction func openPrivacyPolicy(_ sender: Any) {
+        
+        let url = URL(string: "https://docs.google.com/document/d/1gYIOe1lBswG3dwJm6UsYKESD-LUpynP5NIxAMxNpcQ4/edit?usp=sharing")!
+        
+        if UIApplication.shared.canOpenURL(url) {
+            UIApplication.shared.open(url)
+        }
     }
     
     // すでに登録されているIDを配列に格納
@@ -266,19 +278,31 @@ class FirstViewController: UIViewController, UITextFieldDelegate {
         let recordID = CKRecord.ID(recordName: "all-varmeetsIDsList")
         
         publicDatabase.fetch(withRecordID: recordID, completionHandler: {(existingIDs, error) in
+            
             if let error = error {
                 print(error)
                 return
             }
             
             if let existingIDs = existingIDs?.value(forKey: "accounts") as? [String] {
+                
                 for existingID in existingIDs {
-                    print("success!")
                     self.existingIDs.append(existingID)
                 }
-                print(self.existingIDs)
+                print("登録済みID: \(self.existingIDs)")
             }
         })
+    }
+    
+    // ボタンの見た目
+    func setAppearance(button: UIButton) {
+        button.titleLabel?.font = UIFont.boldSystemFont(ofSize: 13.0)
+        button.setTitleColor(UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0), for: .normal)
+        button.backgroundColor = .white
+        button.layer.borderColor = UIColor.orange.cgColor
+        button.layer.borderWidth = 1
+        button.layer.cornerRadius = 8
+        button.layer.masksToBounds = true
     }
     
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
@@ -289,6 +313,7 @@ class FirstViewController: UIViewController, UITextFieldDelegate {
         
         id = idTextField.text!
         name = nameTextField.text!
+        password = passwordTextField.text!
     }
 
 }
