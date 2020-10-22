@@ -18,24 +18,48 @@ class FirstViewController: UIViewController, UITextFieldDelegate {
     @IBOutlet weak var idTextField: UITextField!
     @IBOutlet weak var idLabel: UILabel!
     @IBOutlet weak var nameTextField: UITextField!
+    @IBOutlet weak var passwordTextField: UITextField!
+    @IBOutlet weak var passwordLabel: UILabel!
     
-    var check = [false, false]
+    var check = [false, false, false]
     @IBOutlet weak var continueButton: UIBarButtonItem!
+    
+    @IBOutlet weak var eulaButton: UIButton!
+    @IBOutlet weak var ppButton: UIButton!
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
         idTextField.delegate = self
         nameTextField.delegate = self
-        
-        continueButton.tintColor = .white
+        passwordTextField.delegate = self
         
         fetchExistingIDs()
+        
+        // 使用許諾契約ボタン
+        eulaButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 12.0)
+        eulaButton.setTitleColor(UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0), for: .normal)
+        eulaButton.backgroundColor = .white
+        eulaButton.layer.borderColor = UIColor.orange.cgColor
+        eulaButton.layer.borderWidth = 1
+        eulaButton.layer.cornerRadius = 8
+        eulaButton.layer.masksToBounds = true
+        
+        // プライバシーポリシーボタン
+        ppButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 12.0)
+        ppButton.setTitleColor(UIColor(hue: 0.07, saturation: 0.9, brightness: 0.95, alpha: 1.0), for: .normal)
+        ppButton.backgroundColor = .white
+        ppButton.layer.borderColor = UIColor.orange.cgColor
+        ppButton.layer.borderWidth = 1
+        ppButton.layer.cornerRadius = 8
+        ppButton.layer.masksToBounds = true
         
         // ID入力時の判定
         idTextField.addTarget(self, action: #selector(idTextEditingChanged), for: UIControl.Event.editingChanged)
         // 名前入力時の判定
         nameTextField.addTarget(self, action: #selector(nameTextEditingChanged), for: UIControl.Event.editingChanged)
+        // パスワード入力時の判定
+        passwordTextField.addTarget(self, action: #selector(passwordTextFieldEditingChanged), for: UIControl.Event.editingChanged)
     }
     
     // アプリ起動でレコードを削除（ダッシュボードに表示されないので応急処置）
@@ -84,8 +108,7 @@ class FirstViewController: UIViewController, UITextFieldDelegate {
                         idLabel.text = "OK!"
                         idLabel.textColor = .blue
                         
-                        check.remove(at: 0)
-                        check.insert(true, at: 0)
+                        check[0] = true
                     }
                 }
                 
@@ -115,6 +138,7 @@ class FirstViewController: UIViewController, UITextFieldDelegate {
     
     // 名前入力時の判定
     @objc func nameTextEditingChanged(textField: UITextField) {
+        
         if let text = textField.text {
             // 入力されていないとき
             if text.count == 0 {
@@ -123,17 +147,75 @@ class FirstViewController: UIViewController, UITextFieldDelegate {
             
             // 入力されているとき
             else {
-                check.remove(at: 1)
-                check.insert(true, at: 1)
+                check[1] = true
             }
+        }
+    }
+    
+    // パスワード入力時の判定
+    @objc func passwordTextFieldEditingChanged(textField: UITextField) {
+        
+        if let text = textField.text {
+            // 8文字未満のとき
+            if text.count < 8 {
+                passwordLabel.text = "8文字以上で入力してください"
+                noGood(num: 2)
+            }
+            
+            // 33文字以上のとき
+            else if text.count > 32 {
+                passwordLabel.text = "32文字以下で入力してください"
+                noGood(num: 2)
+            }
+            
+            // 8~32文字のとき
+            else {
+                // 半角英数字で構成されているとき
+                if passwordTextFieldCharactersSet(textField, text) == true {
+                    // OK!
+                    passwordLabel.text = "OK!"
+                    passwordLabel.textColor = .blue
+                    
+                    check[2] = true
+                }
+                
+                // 使用できない文字が含まれているとき
+                else {
+                    passwordLabel.text = "半角英数字のみで構成してください"
+                    noGood(num: 2)
+                }
+            }
+        }
+    }
+    
+    // パスワード入力文字列の判定
+    func passwordTextFieldCharactersSet(_ textField: UITextField, _ text: String) -> Bool {
+        // 入力できる文字
+        let characters = CharacterSet(charactersIn:"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz").inverted
+        
+        let components = text.components(separatedBy: characters)
+        let filtered = components.joined(separator: "")
+        
+        if text == filtered {
+            return true
+        } else {
+            return false
         }
     }
     
     // 警告を表示 & 続行ボタンを無効にする
     func noGood(num: Int) {
-        idLabel.textColor = .red
-        check.remove(at: num)
-        check.insert(false, at: num)
+        
+        check[num] = false
+        
+        // ラベルが初期テキストではないとき（入力済みのとき）、ラベルを赤くする
+        if check[0] == false && idLabel.text != "半角英数字・アンダーバー（_）を入力できます" {
+            idLabel.textColor = .red
+        }
+        if check[2] == false && passwordLabel.text != "半角英数字を入力できます" {
+            passwordLabel.textColor = .red
+        }
+        
         continueButton.isEnabled = false
         continueButton.image = UIImage(named: "ContinueButton_gray")
     }
@@ -178,12 +260,10 @@ class FirstViewController: UIViewController, UITextFieldDelegate {
     
     // すでに登録されているIDを配列に格納
     func fetchExistingIDs() {
-        // ID一覧のRecordName
-        let accountsList = "all-varmeetsIDsList"
-        // デフォルトコンテナ（iCloud.com.gmail.mokamokayuuyuu.AccountsTest）のパブリックデータベースにアクセス
+        // デフォルトコンテナ（iCloud.com.gmail.mokamokayuuyuu.varmeets）のパブリックデータベースにアクセス
         let publicDatabase = CKContainer.default().publicCloudDatabase
         
-        let recordID = CKRecord.ID(recordName: accountsList)
+        let recordID = CKRecord.ID(recordName: "all-varmeetsIDsList")
         
         publicDatabase.fetch(withRecordID: recordID, completionHandler: {(existingIDs, error) in
             if let error = error {
@@ -202,6 +282,7 @@ class FirstViewController: UIViewController, UITextFieldDelegate {
     }
     
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        
         guard let button = sender as? UIBarButtonItem, button === continueButton else {
             return
         }
