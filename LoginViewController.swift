@@ -247,6 +247,9 @@ class LoginViewController: UIViewController, UITextFieldDelegate {
                 myID = idTextField.text!
                 myName = fetchedName
                 
+                userDefaults.set(idTextField.text!, forKey: "myID")
+                userDefaults.set(fetchedName, forKey: "myName")
+                
                 // ログイン画面をとじてホーム画面へ
                 self.dismiss(animated: true, completion: nil)
             }

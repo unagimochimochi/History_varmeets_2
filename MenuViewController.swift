@@ -6,13 +6,46 @@
 //
 
 import UIKit
+import CloudKit
 
 class MenuViewController: UIViewController {
-
+    
     @IBOutlet weak var menuView: UIView!
+    
+    @IBOutlet weak var icon: UIButton!
+    @IBOutlet weak var nameLabel: UILabel!
+    @IBOutlet weak var idLabel: UILabel!
+    
+    @IBOutlet weak var bioLabel: UILabel!
+    
+    let publicDatabase = CKContainer.default().publicCloudDatabase
+    
+    var fetchedBio: String?
+    
+    var timer: Timer!
+    var check = 0
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        icon.layer.borderColor = UIColor.gray.cgColor // 枠線の色
+        icon.layer.borderWidth = 0.5 // 枠線の太さ
+        icon.layer.cornerRadius = icon.bounds.width / 2 // 丸くする
+        icon.layer.masksToBounds = true // 丸の外側を消す
+        
+        fetchMyBio()
+        
+        // タイマースタート
+        timer = Timer.scheduledTimer(timeInterval: 0.5, target: self, selector: #selector(fetchingBio), userInfo: nil, repeats: true)
+    }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        if let id = myID, let name = myName {
+            idLabel.text = id
+            nameLabel.text = name
+        }
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -44,6 +77,52 @@ class MenuViewController: UIViewController {
                                completion: { bool in
                                 self.dismiss(animated: true, completion: nil)
                                })
+            }
+        }
+    }
+    
+    func fetchMyBio() {
+        
+        let recordID = CKRecord.ID(recordName: "accountID-\(myID!)")
+        
+        publicDatabase.fetch(withRecordID: recordID, completionHandler: {(record, error) in
+            
+            if let error = error {
+                print("Bio取得エラー: \(error)")
+                return
+            }
+            
+            if let bio = record?.value(forKey: "accountBio") as? String {
+                self.fetchedBio = bio
+                self.check = 1
+            } else {
+                print("クラウドのBioが空")
+                self.check = 2
+            }
+        })
+    }
+    
+    @objc func fetchingBio() {
+        print("fetchingBio")
+        
+        if check != 0 {
+            print("Completed fetching my bio!")
+            
+            // タイマーを止める
+            if let workingTimer = timer {
+                workingTimer.invalidate()
+            }
+            
+            if check == 1 {
+                // bioを表示
+                bioLabel.text = fetchedBio
+                bioLabel.textColor = .black
+            }
+            
+            else if check == 2 {
+                // bioが空であることを表示
+                bioLabel.text = "自己紹介が未入力です"
+                bioLabel.textColor = .systemGray
             }
         }
     }
