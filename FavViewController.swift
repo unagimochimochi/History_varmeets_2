@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import CloudKit
 
 var favPlaces = [String]()
 var favAddresses = [String]()
@@ -17,39 +18,23 @@ class FavViewController: UIViewController, UISearchBarDelegate, UITableViewDeleg
     @IBOutlet weak var favSearchBar: UISearchBar!
     @IBOutlet weak var favTableView: UITableView!
     
+    let publicDatabase = CKContainer.default().publicCloudDatabase
+    
+    var favLocations = [CLLocation]()    // データベース保存用
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-        // Do any additional setup after loading the view.
-        
-        if userDefaults.object(forKey: "favPlaces") != nil {
-            favPlaces = userDefaults.stringArray(forKey: "favPlaces")!
-        } else {
-            favPlaces = ["お気に入り"]
-        }
-        
-        if userDefaults.object(forKey: "favAddresses") != nil {
-            favAddresses = userDefaults.stringArray(forKey: "favAddresses")!
-        } else {
-            favAddresses = ["住所"]
-        }
-        
-        if userDefaults.object(forKey: "favLats") != nil {
-            favLats = userDefaults.array(forKey: "favLats") as! [Double]
-        } else {
-            favLats = [35.658584]
-        }
-        
-        if userDefaults.object(forKey: "favLons") != nil {
-            favLons = userDefaults.array(forKey: "favLons") as! [Double]
-        } else {
-            favLons = [139.7454316]
-        }
     }
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(true)
         
         favTableView.reloadData()
+        
+        favLocations.removeAll()
+        for i in 0...(favPlaces.count - 1) {
+            favLocations.append(CLLocation(latitude: favLats[i], longitude: favLons[i]))
+        }
     }
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
@@ -76,21 +61,56 @@ class FavViewController: UIViewController, UISearchBarDelegate, UITableViewDeleg
     }
     
     func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
+        
         if editingStyle == .delete {
-            favPlaces.remove(at: indexPath.row)
-            userDefaults.set(favPlaces, forKey: "favPlaces")
-            
-            favAddresses.remove(at: indexPath.row)
-            userDefaults.set(favAddresses, forKey: "favAddresses")
-            
-            favLats.remove(at: indexPath.row)
-            userDefaults.set(favLats, forKey: "favLats")
-            
-            favLons.remove(at: indexPath.row)
-            userDefaults.set(favLons, forKey: "favLons")
-            
+            remove(index: indexPath.row)
             tableView.deleteRows(at: [indexPath], with: .fade)
         }
+    }
+    
+    func remove(index: Int) {
+        
+        favPlaces.remove(at: index)
+        userDefaults.set(favPlaces, forKey: "favPlaces")
+        
+        favAddresses.remove(at: index)
+        userDefaults.set(favAddresses, forKey: "favAddresses")
+        
+        favLats.remove(at: index)
+        userDefaults.set(favLats, forKey: "favLats")
+        
+        favLons.remove(at: index)
+        userDefaults.set(favLons, forKey: "favLons")
+        
+        favLocations.remove(at: index)
+        
+        // 検索条件を作成
+        let predicate = NSPredicate(format: "accountID == %@", argumentArray: [myID!])
+        let query = CKQuery(recordType: "Accounts", predicate: predicate)
+                
+        // データベースの予定一覧からIDを削除
+        publicDatabase.perform(query, inZoneWith: nil, completionHandler: {(records, error) in
+                    
+            if let error = error {
+                print("データベースのお気に入り削除エラー1: \(error)")
+                return
+            }
+                    
+            for record in records! {
+                
+                record["favPlaceNames"] = favPlaces as [String]
+                record["favPlaceLocations"] = self.favLocations as [CLLocation]
+                        
+                self.publicDatabase.save(record, completionHandler: {(record, error) in
+                            
+                    if let error = error {
+                        print("データベースのお気に入り削除エラー2: \(error)")
+                        return
+                    }
+                    print("データベースのお気に入り削除成功")
+                })
+            }
+        })
     }
     
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {

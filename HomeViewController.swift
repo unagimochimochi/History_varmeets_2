@@ -44,6 +44,8 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     var fetchPlansTimer: Timer!
     var fetchPlansCheck = [Bool]()
     
+    let geocoder = CLGeocoder()
+    
     @IBOutlet weak var planTable: UITableView!
     
     @IBOutlet weak var countdownView: UIView!
@@ -595,6 +597,30 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             self.lons = ["経度"]
             self.lats = ["緯度"]
         }
+        
+        if userDefaults.object(forKey: "favPlaces") != nil {
+            favPlaces = userDefaults.stringArray(forKey: "favPlaces")!
+        } else {
+            favPlaces = ["お気に入り"]
+        }
+        
+        if userDefaults.object(forKey: "favAddresses") != nil {
+            favAddresses = userDefaults.stringArray(forKey: "favAddresses")!
+        } else {
+            favAddresses = ["住所"]
+        }
+        
+        if userDefaults.object(forKey: "favLats") != nil {
+            favLats = userDefaults.array(forKey: "favLats") as! [Double]
+        } else {
+            favLats = [35.658584]
+        }
+        
+        if userDefaults.object(forKey: "favLons") != nil {
+            favLons = userDefaults.array(forKey: "favLons") as! [Double]
+        } else {
+            favLons = [139.7454316]
+        }
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -905,6 +931,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         })
     }
     
+    // ついでにお気に入りも取得
     func fetchMyPlanIDs(completion: @escaping () -> ()) {
         
         let recordID = CKRecord.ID(recordName: "accountID-\(myID!)")
@@ -928,6 +955,46 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                 
             } else {
                 print("データベースの予定なし")
+            }
+            
+            if let favPlaceNames = record?.value(forKey: "favPlaceNames") as? [String],
+               let favPlaceLocations = record?.value(forKey: "favPlaceLocations") as? [CLLocation] {
+                
+                favPlaces.removeAll()
+                favAddresses.removeAll()
+                favLats.removeAll()
+                favLons.removeAll()
+                
+                for favPlace in favPlaceNames {
+                    favPlaces.append(favPlace)
+                }
+                
+                var favLocations = [CLLocation]()    // 逆ジオコーディング用
+                for favLocation in favPlaceLocations {
+                    favLats.append(favLocation.coordinate.latitude)
+                    favLons.append(favLocation.coordinate.longitude)
+                    favLocations.append(favLocation)
+                }
+                
+                // CLLocationから住所を特定
+                for favLocation in favLocations {
+                    self.geocoder.reverseGeocodeLocation(favLocation, preferredLocale: nil, completionHandler: {(placemarks, error) in
+                        guard let placemark = placemarks?.first, error == nil,
+                              let administrativeArea = placemark.administrativeArea,    //県
+                              let locality = placemark.locality,    // 市区町村
+                              let throughfare = placemark.thoroughfare,    // 丁目を含む地名
+                              let subThoroughfare = placemark.subThoroughfare    // 番地
+                        else {
+                            return
+                        }
+                        favAddresses.append(administrativeArea + locality + throughfare + subThoroughfare)
+                    })
+                }
+                
+                userDefaults.set(favPlaces, forKey: "favPlaces")
+                userDefaults.set(favAddresses, forKey: "favAddresses")
+                userDefaults.set(favLats, forKey: "favLats")
+                userDefaults.set(favLons, forKey: "favLons")
             }
         })
     }
@@ -1186,6 +1253,18 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         if identifier == "toRequestedVC" {
             let requestedVC = segue.destination as! RequestedViewController
             requestedVC.requestedIDs = self.fetchedRequests
+        }
+        
+        if identifier == "openMenu" {
+            let menuVC = segue.destination as! MenuViewController
+            // 起動時の友だちの数
+            if friendIDsToMe.isEmpty {
+                menuVC.numberOfFriends = self.friendIDs.count
+            }
+            // 申請者追加後の友だちの数
+            else {
+                menuVC.numberOfFriends = self.friendIDsToMe.count
+            }
         }
     }
     
