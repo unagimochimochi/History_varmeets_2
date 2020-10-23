@@ -45,8 +45,6 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     var fetchPlansCheck = [Bool]()
     
     @IBOutlet weak var planTable: UITableView!
-
-    @IBOutlet weak var myIcon: UIButton!
     
     @IBOutlet weak var countdownView: UIView!
     @IBOutlet weak var countdownViewHeight: NSLayoutConstraint!
@@ -59,7 +57,8 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         
         if let firstVC = sender.source as? FirstViewController,
             let id = firstVC.id,
-            let name = firstVC.name {
+            let name = firstVC.name,
+            let password = firstVC.password {
             
             myID = id
             myName = name
@@ -72,6 +71,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             
             record["accountID"] = id as NSString
             record["accountName"] = name as NSString
+            record["password"] = password as NSString
             record["planIDs"] = ["samplePlan"] as [String]
             record["requestedAccountID_01"] = "NO" as NSString
             record["requestedAccountID_02"] = "NO" as NSString
@@ -79,6 +79,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             
             // レコードを保存
             publicDatabase.save(record, completionHandler: {(record, error) in
+                
                 if let error = error {
                     print("新規レコード保存エラー: \(error)")
                     return
@@ -96,6 +97,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             
             // 検索したレコードの値を更新
             publicDatabase.perform(query, inZoneWith: nil, completionHandler: {(records, error) in
+                
                 if let error = error {
                     print("アカウントリスト追加エラー1: \(error)")
                     return
@@ -447,12 +449,6 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         
         hiddenCountdown()
         estimatedTimesSort.removeAll()
-        
-        // 左上のアイコン
-        myIcon.layer.borderColor = UIColor.gray.cgColor // 枠線の色
-        myIcon.layer.borderWidth = 1 // 枠線の太さ
-        myIcon.layer.cornerRadius = myIcon.bounds.width / 2 // 丸くする
-        myIcon.layer.masksToBounds = true // 丸の外側を消す
         
         if userDefaults.object(forKey: "myID") != nil {
             myID = userDefaults.string(forKey: "myID")
