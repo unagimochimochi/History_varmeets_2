@@ -98,6 +98,26 @@ class MenuViewController: UIViewController {
         }
     }
     
+    // Safariで使用許諾契約を開く
+    @IBAction func openEULA(_ sender: Any) {
+        
+        let url = URL(string: "https://docs.google.com/document/d/1dtr_aG0XdNmxUX1YBFORL9LBbFEmoOLsN1THL6C0Y_Q/edit?usp=sharing")!
+        
+        if UIApplication.shared.canOpenURL(url) {
+            UIApplication.shared.open(url)
+        }
+    }
+    
+    // Safariでプライバシーポリシーを開く
+    @IBAction func openPrivacyPolicy(_ sender: Any) {
+        
+        let url = URL(string: "https://docs.google.com/document/d/1gYIOe1lBswG3dwJm6UsYKESD-LUpynP5NIxAMxNpcQ4/edit?usp=sharing")!
+        
+        if UIApplication.shared.canOpenURL(url) {
+            UIApplication.shared.open(url)
+        }
+    }
+    
     func fetchMyBio() {
         
         let recordID = CKRecord.ID(recordName: "accountID-\(myID!)")
