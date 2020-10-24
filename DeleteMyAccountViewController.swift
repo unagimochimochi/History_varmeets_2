@@ -10,8 +10,13 @@ import CloudKit
 
 class DeleteMyAccountViewController: UIViewController, UITextFieldDelegate {
     
+    let publicDatabase = CKContainer.default().publicCloudDatabase
+    
     var inputPassword: String?
     var fetchedPassword: String?
+    
+    var fetchedFriendIDs = [String]()
+    var fetchedFriendFriendIDs = [[String]]()
     
     @IBOutlet weak var passwordTextField: UITextField!
     @IBOutlet weak var continueButton: UIBarButtonItem!
@@ -84,10 +89,31 @@ class DeleteMyAccountViewController: UIViewController, UITextFieldDelegate {
                 
                 // キャンセルボタン
                 let cancel = UIAlertAction(title: "キャンセル", style: .cancel, handler: nil)
+                
                 // 削除ボタン
-                let delete = UIAlertAction(title: "削除", style: .destructive, handler: { (action) in
-                    // クロージャで削除処理を書く
-                    print("削除完了")
+                let delete = UIAlertAction(title: "削除", style: .destructive, handler: { action in
+                    
+                    // タイマースタート
+                    DispatchQueue.main.async { [weak self] in
+                        guard let `self` = self else { return }
+                        self.timer2 = Timer.scheduledTimer(timeInterval: 1, target: self, selector: #selector(self.deletingMyAccount), userInfo: nil, repeats: true)
+                    }
+                    
+                    // アカウントのレコード削除
+                    self.deleteMyAccount()
+                    
+                    // 友だちの友だち一覧から自分のIDを削除
+                    // 友だちのIDを取得
+                    self.fetchFriendIDs(completion: {
+                        
+                        for i in 0...(self.fetchedFriendIDs.count - 1) {
+                            // 友だちの友だち一覧から自分のIDを削除（メンバ変数）
+                            self.deleteMyIDByFriendFriendIDs(count: i, completion: {
+                                // 友だちの友だち一覧を更新
+                                self.reloadFriendFriendIDs(count: i)
+                            })
+                        }
+                    })
                 })
                 
                 // Actionを追加
@@ -108,9 +134,19 @@ class DeleteMyAccountViewController: UIViewController, UITextFieldDelegate {
         }
     }
     
+    @objc func deletingMyAccount() {
+        print("Deleting my account")
+        
+        if deleteCheck != 0 {
+            // タイマーを止める
+            if let workingTimer = timer2 {
+                workingTimer.invalidate()
+            }
+        }
+    }
+    
     func fetchPassword() {
         
-        let publicDatabase = CKContainer.default().publicCloudDatabase
         let recordID = CKRecord.ID(recordName: "accountID-\(myID!)")
         
         publicDatabase.fetch(withRecordID: recordID, completionHandler: {(record, error) in
@@ -128,7 +164,6 @@ class DeleteMyAccountViewController: UIViewController, UITextFieldDelegate {
     
     func deleteMyAccount() {
         
-        let publicDatabase = CKContainer.default().publicCloudDatabase
         let recordID = CKRecord.ID(recordName: "accountID-\(myID!)")
         
         publicDatabase.delete(withRecordID: recordID, completionHandler: {(record, error) in
@@ -143,4 +178,83 @@ class DeleteMyAccountViewController: UIViewController, UITextFieldDelegate {
         })
     }
     
+    func fetchFriendIDs(completion: @escaping () -> ()) {
+        
+        let recordID = CKRecord.ID(recordName: "accountID-\(myID!)")
+        
+        publicDatabase.fetch(withRecordID: recordID, completionHandler: {(record, error) in
+            
+            if let error = error {
+                print("友だち取得エラー: \(error)")
+                return
+            }
+            
+            if let friendIDs = record?.value(forKey: "friends") as? [String] {
+                for friendID in friendIDs {
+                    self.fetchedFriendIDs.append(friendID)
+                }
+                completion()
+            }
+        })
+    }
+    
+    func deleteMyIDByFriendFriendIDs(count: Int, completion: @escaping () -> ()) {
+        
+        // 初期値に空の配列を代入
+        for _ in 0...(fetchedFriendIDs.count - 1) {
+            fetchedFriendFriendIDs.append([String]())
+        }
+        
+        let friendRecordID = CKRecord.ID(recordName: "accountID-\(fetchedFriendIDs[count])")
+        
+        publicDatabase.fetch(withRecordID: friendRecordID, completionHandler: {(record, error) in
+            
+            if let error = error {
+                print("\(self.fetchedFriendIDs[count])の友だち一覧取得エラー: \(error)")
+                return
+            }
+            
+            if let friendFriendIDs = record?.value(forKey: "friends") as? [String] {
+                
+                for friendFriendID in friendFriendIDs {
+                    self.fetchedFriendFriendIDs[count].append(friendFriendID)
+                }
+                
+                // 友だちの友だち一覧から自分のIDを削除
+                if let index = self.fetchedFriendFriendIDs[count].index(of: myID!) {
+                    self.fetchedFriendFriendIDs[count].remove(at: index)
+                }
+                completion()
+            }
+        })
+    }
+    
+    func reloadFriendFriendIDs(count: Int) {
+        
+        // 友だちの検索条件を作成
+        let predicate = NSPredicate(format: "accountID == %@", argumentArray: [fetchedFriendIDs[count]])
+        let query = CKQuery(recordType: "Accounts", predicate: predicate)
+        
+        publicDatabase.perform(query, inZoneWith: nil, completionHandler: {(records, error) in
+            
+            if let error = error {
+                print("\(self.fetchedFriendIDs[count])の友だち一覧更新エラー1: \(error)")
+                return
+            }
+            
+            for record in records! {
+                
+                record["friends"] = self.fetchedFriendFriendIDs[count] as [String]
+                
+                self.publicDatabase.save(record, completionHandler: {(record, error) in
+                    
+                    if let error = error {
+                        print("\(self.fetchedFriendIDs[count])の友だち一覧更新エラー2: \(error)")
+                        return
+                    }
+                    print("\(self.fetchedFriendIDs[count])の友だち一覧更新成功")
+                })
+            }
+        })
+    }
 }

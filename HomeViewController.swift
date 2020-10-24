@@ -76,6 +76,8 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             record["requestedAccountID_01"] = "NO" as NSString
             record["requestedAccountID_02"] = "NO" as NSString
             record["requestedAccountID_03"] = "NO" as NSString
+            record["favPlaceNames"] = ["東京タワー（お気に入りサンプル）"] as [String]
+            record["favPlaceLocations"] = [CLLocation(latitude: 35.658584, longitude: 139.7454316)] as [CLLocation]
             
             // レコードを保存
             publicDatabase.save(record, completionHandler: {(record, error) in
@@ -630,7 +632,6 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             planTable.deselectRow(at: indexPath, animated: true)
         }
  
-        
         // 1秒ごとに処理
         timer = Timer.scheduledTimer(timeInterval: 1, target: self, selector: #selector(update), userInfo: nil, repeats: true)
         
