@@ -49,6 +49,8 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
     var participantLocations = [CLLocation]()
     var participantAnnotations = [MKPointAnnotation]()
     
+    var favLocations = [CLLocation]()    // データベース保存用
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
@@ -557,6 +559,13 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
                     addFavButton.backgroundColor = .white
                     addFavButton.layer.borderColor = UIColor.orange.cgColor
                     addFavButton.layer.borderWidth = 1
+                    
+                    // データベースに保存
+                    favLocations.removeAll()
+                    for i in 0...(favPlaces.count - 1) {
+                        favLocations.append(CLLocation(latitude: favLats[i], longitude: favLons[i]))
+                    }
+                    reloadFavorites()
                 }
             }
             
@@ -584,6 +593,13 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
                 addFavButton.setTitle("お気に入り解除", for: .normal)
                 addFavButton.setTitleColor(.white, for: .normal)
                 addFavButton.backgroundColor = .orange
+                
+                // データベースに保存
+                favLocations.removeAll()
+                for i in 0...(favPlaces.count - 1) {
+                    favLocations.append(CLLocation(latitude: favLats[i], longitude: favLons[i]))
+                }
+                reloadFavorites()
             }
         }
             
@@ -625,6 +641,13 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
                         addFavButton.backgroundColor = .white
                         addFavButton.layer.borderColor = UIColor.orange.cgColor
                         addFavButton.layer.borderWidth = 1
+                        
+                        // データベースに保存
+                        favLocations.removeAll()
+                        for i in 0...(favPlaces.count - 1) {
+                            favLocations.append(CLLocation(latitude: favLats[i], longitude: favLons[i]))
+                        }
+                        reloadFavorites()
                     }
                 }
                 
@@ -652,6 +675,13 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
                     addFavButton.setTitle("お気に入り解除", for: .normal)
                     addFavButton.setTitleColor(.white, for: .normal)
                     addFavButton.backgroundColor = .orange
+                    
+                    // データベースに保存
+                    favLocations.removeAll()
+                    for i in 0...(favPlaces.count - 1) {
+                        favLocations.append(CLLocation(latitude: favLats[i], longitude: favLons[i]))
+                    }
+                    reloadFavorites()
                 }
             }
         }
@@ -659,30 +689,26 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
     
     func recordLocation() {
         
-        if let id = myID {
-            
-            // 検索条件を作成
-            let predicate = NSPredicate(format: "accountID == %@", argumentArray: [id])
-            let query = CKQuery(recordType: "Accounts", predicate: predicate)
-            
-            // 検索したレコードの値を更新
-            publicDatabase.perform(query, inZoneWith: nil, completionHandler: {(records, error) in
-                if let error = error {
-                    print("レコードの位置情報更新エラー1: \(error)")
-                    return
-                }
-                for record in records! {
-                    record["currentLocation"] = self.mapView.userLocation.location
-                    self.publicDatabase.save(record, completionHandler: {(record, error) in
-                        if let error = error {
-                            print("レコードの位置情報更新エラー2: \(error)")
-                            return
-                        }
-                        print("レコードの位置情報更新成功")
-                    })
-                }
-            })
-        }
+        let predicate = NSPredicate(format: "accountID == %@", argumentArray: [myID!])
+        let query = CKQuery(recordType: "Accounts", predicate: predicate)
+        
+        // 検索したレコードの値を更新
+        publicDatabase.perform(query, inZoneWith: nil, completionHandler: {(records, error) in
+            if let error = error {
+                print("レコードの位置情報更新エラー1: \(error)")
+                return
+            }
+            for record in records! {
+                record["currentLocation"] = self.mapView.userLocation.location
+                self.publicDatabase.save(record, completionHandler: {(record, error) in
+                    if let error = error {
+                        print("レコードの位置情報更新エラー2: \(error)")
+                        return
+                    }
+                    print("レコードの位置情報更新成功")
+                })
+            }
+        })
     }
     
     func fetchParticipantIDs(planID: String, completion: @escaping () -> ()) {
@@ -732,6 +758,35 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
                 self.participantLocations[count] = location
                 print("\(accountID)の位置: \(self.participantLocations[count])")
                 completion()
+            }
+        })
+    }
+    
+    func reloadFavorites() {
+        
+        let predicate = NSPredicate(format: "accountID == %@", argumentArray: [myID!])
+        let query = CKQuery(recordType: "Accounts", predicate: predicate)
+        
+        publicDatabase.perform(query, inZoneWith: nil, completionHandler: {(records, error) in
+            
+            if let error = error {
+                print("データベースのお気に入り更新エラー1: \(error)")
+                return
+            }
+            
+            for record in records! {
+                
+                record["favPlaceNames"] = favPlaces as [String]
+                record["favPlaceLocations"] = self.favLocations as [CLLocation]
+                
+                self.publicDatabase.save(record, completionHandler: {(record, error) in
+                    
+                    if let error = error {
+                        print("データベースのお気に入り更新エラー2: \(error)")
+                        return
+                    }
+                    print("データベースのお気に入り更新成功")
+                })
             }
         })
     }

@@ -44,8 +44,6 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     var fetchPlansTimer: Timer!
     var fetchPlansCheck = [Bool]()
     
-    let geocoder = CLGeocoder()
-    
     @IBOutlet weak var planTable: UITableView!
     
     @IBOutlet weak var countdownView: UIView!
@@ -971,23 +969,32 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                 
                 var favLocations = [CLLocation]()    // 逆ジオコーディング用
                 for favLocation in favPlaceLocations {
+                    favAddresses.append("住所が取得できません")
                     favLats.append(favLocation.coordinate.latitude)
                     favLons.append(favLocation.coordinate.longitude)
                     favLocations.append(favLocation)
                 }
                 
                 // CLLocationから住所を特定
-                for favLocation in favLocations {
-                    self.geocoder.reverseGeocodeLocation(favLocation, preferredLocale: nil, completionHandler: {(placemarks, error) in
-                        guard let placemark = placemarks?.first, error == nil,
-                              let administrativeArea = placemark.administrativeArea,    //県
-                              let locality = placemark.locality,    // 市区町村
-                              let throughfare = placemark.thoroughfare,    // 丁目を含む地名
-                              let subThoroughfare = placemark.subThoroughfare    // 番地
-                        else {
+                for i in 0...(favLocations.count - 1) {
+                    
+                    let geocoder = CLGeocoder()
+                    
+                    geocoder.reverseGeocodeLocation(favLocations[i], preferredLocale: nil, completionHandler: {(placemarks, error) in
+                        
+                        if let error = error {
+                            print("お気に入りの住所取得エラー: \(error)")
                             return
                         }
-                        favAddresses.append(administrativeArea + locality + throughfare + subThoroughfare)
+                        print("return後: \(i)")
+                        if let placemark = placemarks?.first,
+                           let administrativeArea = placemark.administrativeArea,    //県
+                           let locality = placemark.locality,    // 市区町村
+                           let throughfare = placemark.thoroughfare,    // 丁目を含む地名
+                           let subThoroughfare = placemark.subThoroughfare {    // 番地
+                            
+                            favAddresses[i] = administrativeArea + locality + throughfare + subThoroughfare
+                        }
                     })
                 }
                 
