@@ -7,6 +7,7 @@
 
 import UIKit
 import MapKit
+import CloudKit
 
 class FavPlaceViewController: UIViewController, MKMapViewDelegate {
     
@@ -17,6 +18,9 @@ class FavPlaceViewController: UIViewController, MKMapViewDelegate {
     var annotation = MKPointAnnotation()
     
     let geocoder = CLGeocoder()
+    
+    let publicDatabase = CKContainer.default().publicCloudDatabase
+    var favLocations = [CLLocation]()    // データベース保存用
 
     @IBOutlet weak var mapView: MKMapView!
     
@@ -138,6 +142,13 @@ class FavPlaceViewController: UIViewController, MKMapViewDelegate {
                 favButton.backgroundColor = .white
                 favButton.layer.borderColor = UIColor.orange.cgColor
                 favButton.layer.borderWidth = 1
+                
+                // データベースに保存
+                favLocations.removeAll()
+                for i in 0...(favPlaces.count - 1) {
+                    favLocations.append(CLLocation(latitude: favLats[i], longitude: favLons[i]))
+                }
+                reloadFavorites()
             }
         }
         
@@ -165,7 +176,43 @@ class FavPlaceViewController: UIViewController, MKMapViewDelegate {
             favButton.setTitle("お気に入り解除", for: .normal)
             favButton.setTitleColor(.white, for: .normal)
             favButton.backgroundColor = .orange
+            
+            // データベースに保存
+            favLocations.removeAll()
+            for i in 0...(favPlaces.count - 1) {
+                favLocations.append(CLLocation(latitude: favLats[i], longitude: favLons[i]))
+            }
+            reloadFavorites()
         }
+    }
+    
+    func reloadFavorites() {
+        
+        let predicate = NSPredicate(format: "accountID == %@", argumentArray: [myID!])
+        let query = CKQuery(recordType: "Accounts", predicate: predicate)
+        
+        publicDatabase.perform(query, inZoneWith: nil, completionHandler: {(records, error) in
+            
+            if let error = error {
+                print("データベースのお気に入り更新エラー1: \(error)")
+                return
+            }
+            
+            for record in records! {
+                
+                record["favPlaceNames"] = favPlaces as [String]
+                record["favPlaceLocations"] = self.favLocations as [CLLocation]
+                
+                self.publicDatabase.save(record, completionHandler: {(record, error) in
+                    
+                    if let error = error {
+                        print("データベースのお気に入り更新エラー2: \(error)")
+                        return
+                    }
+                    print("データベースのお気に入り更新成功")
+                })
+            }
+        })
     }
     
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
