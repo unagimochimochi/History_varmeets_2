@@ -18,6 +18,8 @@ class DeleteMyAccountViewController: UIViewController, UITextFieldDelegate {
     var fetchedFriendIDs = [String]()
     var fetchedFriendFriendIDs = [[String]]()
     
+    var existingIDs = [String]()
+    
     @IBOutlet weak var passwordTextField: UITextField!
     @IBOutlet weak var continueButton: UIBarButtonItem!
     
@@ -98,21 +100,10 @@ class DeleteMyAccountViewController: UIViewController, UITextFieldDelegate {
                         guard let `self` = self else { return }
                         self.timer2 = Timer.scheduledTimer(timeInterval: 1, target: self, selector: #selector(self.deletingMyAccount), userInfo: nil, repeats: true)
                     }
-                    
-                    // アカウントのレコード削除
-                    self.deleteMyAccount()
-                    
-                    // 友だちの友だち一覧から自分のIDを削除
-                    // 友だちのIDを取得
+                    // アカウントのレコード削除前に友だち一覧を取得
                     self.fetchFriendIDs(completion: {
-                        
-                        for i in 0...(self.fetchedFriendIDs.count - 1) {
-                            // 友だちの友だち一覧から自分のIDを削除（メンバ変数）
-                            self.deleteMyIDByFriendFriendIDs(count: i, completion: {
-                                // 友だちの友だち一覧を更新
-                                self.reloadFriendFriendIDs(count: i)
-                            })
-                        }
+                        // アカウントのレコード削除
+                        self.deleteMyAccount()
                     })
                 })
                 
@@ -141,6 +132,41 @@ class DeleteMyAccountViewController: UIViewController, UITextFieldDelegate {
             // タイマーを止める
             if let workingTimer = timer2 {
                 workingTimer.invalidate()
+            }
+            
+            if deleteCheck == 1 {
+                let dialog = UIAlertController(title: "削除失敗", message: "おそらく通信環境が悪いです。\n時間をおいてもう一度お試しください。", preferredStyle: .alert)
+                // OKボタン
+                dialog.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+                // ダイアログを表示
+                self.present(dialog, animated: true, completion: nil)
+            }
+            
+            else if deleteCheck == 2 {
+                let dialog = UIAlertController(title: "削除完了", message: "アカウントをインターネット上から完全に削除しました。\nアプリ削除して終了してください。", preferredStyle: .alert)
+                // OKボタン
+                dialog.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+                // ダイアログを表示
+                self.present(dialog, animated: true, completion: nil)
+                    
+                for i in 0...(self.fetchedFriendIDs.count - 1) {
+                    // 友だちの友だち一覧から自分のIDを削除（メンバ変数）
+                    self.deleteMyIDByFriendFriendIDs(count: i, completion: {
+                        // 友だちの友だち一覧を更新
+                        self.reloadFriendFriendIDs(count: i)
+                    })
+                }
+                
+                // アカウントリストから自分のIDを削除
+                // アカウントリストを取得
+                fetchExistingIDs(completion: {
+                    // アカウントリストから自分のIDを削除（メンバ変数）
+                    if let index = self.existingIDs.index(of: "accountID-\(myID!)") {
+                        self.existingIDs.remove(at: index)
+                    }
+                    // アカウントリストを更新
+                    self.reloadExistingIDs()
+                })
             }
         }
     }
@@ -257,4 +283,55 @@ class DeleteMyAccountViewController: UIViewController, UITextFieldDelegate {
             }
         })
     }
+    
+    func fetchExistingIDs(completion: @escaping () -> ()) {
+        
+        let recordID = CKRecord.ID(recordName: "all-varmeetsIDsList")
+        
+        publicDatabase.fetch(withRecordID: recordID, completionHandler: {(record, error) in
+            
+            if let error = error {
+                print("アカウントリスト取得エラー: \(error)")
+                return
+            }
+            
+            if let allIDs = record?.value(forKey: "accounts") as? [String] {
+                for existingID in allIDs {
+                    self.existingIDs.append(existingID)
+                }
+                print("アカウントリスト取得成功")
+                completion()
+            }
+        })
+    }
+    
+    func reloadExistingIDs() {
+        
+        // アカウントリストの検索条件を作成
+        let predicate = NSPredicate(format: "toSearch == %@", argumentArray: ["all-varmeetsIDs"])
+        let query = CKQuery(recordType: "AccountsList", predicate: predicate)
+        
+        publicDatabase.perform(query, inZoneWith: nil, completionHandler: {(records, error) in
+            
+            if let error = error {
+                print("アカウントリスト更新エラー1: \(error)")
+                return
+            }
+            
+            for record in records! {
+                
+                record["accounts"] = self.existingIDs as [String]
+                
+                self.publicDatabase.save(record, completionHandler: {(record, error) in
+                    
+                    if let error = error {
+                        print("アカウントリスト更新エラー2: \(error)")
+                        return
+                    }
+                    print("アカウントリスト更新成功")
+                })
+            }
+        })
+    }
+    
 }
