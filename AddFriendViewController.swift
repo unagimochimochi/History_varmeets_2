@@ -40,6 +40,7 @@ class AddFriendViewController: UIViewController, UISearchBarDelegate, UITableVie
     func searchBarTextDidBeginEditing(_ searchBar: UISearchBar) {
         fetchedFriendID = nil
         fetchedFriendName = nil
+        fetchedFriendBio = nil
         
         resultsTableView.reloadData()
     }
@@ -123,6 +124,8 @@ class AddFriendViewController: UIViewController, UISearchBarDelegate, UITableVie
             
             if let bio = record?.value(forKey: "accountBio") as? String {
                 self.fetchedFriendBio = bio
+            } else {
+                self.fetchedFriendBio = "自己紹介が未入力です"
             }
             
             if let requested01 = record?.value(forKey: "requestedAccountID_01") as? String,

@@ -38,7 +38,11 @@ class RequestFriendViewController: UIViewController {
         
         if let bio = friendBio {
             bioLabel.text = bio
-            bioLabel.textColor = .black
+            if bio == "自己紹介が未入力です" {
+                bioLabel.textColor = .systemGray
+            } else {
+                bioLabel.textColor = .black
+            }
         }
         
         // アイコン
