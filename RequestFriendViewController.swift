@@ -16,6 +16,8 @@ class RequestFriendViewController: UIViewController {
     
     var requestedAccounts = [String]()
     var existingFriendIDs = [String]()
+    
+    let publicDatabase = CKContainer.default().publicCloudDatabase
 
     @IBOutlet weak var idLabel: UILabel!
     @IBOutlet weak var nameLabel: UILabel!
@@ -25,8 +27,10 @@ class RequestFriendViewController: UIViewController {
     
     @IBOutlet weak var requestButton: UIButton!
     
-    var requestSuccess = false
+    var requestSuccess: Bool?
     var full = false
+    
+    var timer: Timer!
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -77,76 +81,38 @@ class RequestFriendViewController: UIViewController {
             }
         }
     }
+    
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        
+        if let workingTimer = timer {
+            workingTimer.invalidate()
+        }
+    }
 
     @IBAction func request(_ sender: Any) {
-        // デフォルトコンテナ（iCloud.com.gmail.mokamokayuuyuu.varmeets）のパブリックデータベースにアクセス
-        let publicDatabase = CKContainer.default().publicCloudDatabase
         
-        if let friendID = friendID {
-            // 検索条件を作成
-            let predicate = NSPredicate(format: "accountID == %@", argumentArray: [friendID])
-            let query = CKQuery(recordType: "Accounts", predicate: predicate)
+        reloadFriendRecord()
+        
+        // タイマースタート
+        timer = Timer.scheduledTimer(timeInterval: 0.5, target: self, selector: #selector(requesting), userInfo: nil, repeats: true)
+    }
+    
+    @objc func requesting() {
+        print("requesting")
+        
+        if let workingTimer = timer {
             
-            // 検索したレコードの値を更新
-            publicDatabase.perform(query, inZoneWith: nil, completionHandler: {(records, error) in
-                if let error = error {
-                    print("申請エラー1: \(error)")
-                    self.requestSuccess = false
-                    return
-                }
-                
-                for record in records! {
-                    // すでに申請済みのとき
-                    if self.requestedAccounts.contains(myID!) {
-                        // 01~03のうち何番目に申請されているか
-                        if let index = self.requestedAccounts.index(of: myID!) {
-                            // 自分のIDがあるところにNOを挿入
-                            record["requestedAccountID_0\((index + 1).description)"] = "NO"
-                        }
-                    }
-                    
-                    // これから申請するとき
-                    else {
-                        // 01~03のうち、NOのところに申請する
-                        if self.requestedAccounts[0] == "NO" {
-                            record["requestedAccountID_01"] = myID!
-                        } else if self.requestedAccounts[1] == "NO" {
-                            record["requestedAccountID_02"] = myID!
-                        } else if self.requestedAccounts[2] == "NO" {
-                            record["requestedAccountID_03"] = myID!
-                        }
-                        
-                        // NOがないとき
-                        else {
-                            print("相手の申請数の上限を超えています")
-                            self.full = true
-                            return
-                        }
-                    }
-                    
-                    publicDatabase.save(record, completionHandler: {(record, error) in
-                        if let error = error {
-                            print("申請エラー2: \(error)")
-                            self.requestSuccess = false
-                            return
-                        }
-                        print("友だち申請／キャンセル成功")
-                        self.requestSuccess = true
-                    })
-                }
-            })
-        }
-        
-        // 1秒後に処理
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: {
             if self.requestSuccess == true && self.full == false {
+                
+                workingTimer.invalidate()
+                
                 // 申請キャンセルボタンクリック後
                 if self.requestedAccounts.contains(myID!) {
                     // 01~03のうち何番目に申請されているか
                     if let index = self.requestedAccounts.index(of: myID!) {
                         // 自分のIDがあるところにNOを挿入
-                        self.requestedAccounts.remove(at: index)
-                        self.requestedAccounts.insert("NO", at: index)
+                        self.requestedAccounts[index] = "NO"
                     }
                     
                     // 申請キャンセル成功ダイアログ
@@ -163,19 +129,16 @@ class RequestFriendViewController: UIViewController {
                     self.requestButton.layer.borderColor = UIColor.orange.cgColor
                     self.requestButton.layer.borderWidth = 1
                 }
-                    
+                
                 // 友だち申請ボタンクリック後
                 else {
                     // 01~03のうち、NOのところに自分のIDを挿入
                     if self.requestedAccounts[0] == "NO" {
-                        self.requestedAccounts.remove(at: 0)
-                        self.requestedAccounts.insert(myID!, at: 0)
+                        self.requestedAccounts[0] = myID!
                     } else if self.requestedAccounts[1] == "NO" {
-                        self.requestedAccounts.remove(at: 1)
-                        self.requestedAccounts.insert(myID!, at: 1)
+                        self.requestedAccounts[1] = myID!
                     } else if self.requestedAccounts[2] == "NO" {
-                        self.requestedAccounts.remove(at: 2)
-                        self.requestedAccounts.insert(myID!, at: 2)
+                        self.requestedAccounts[2] = myID!
                     }
                     
                     // 友だち申請成功ダイアログ
@@ -193,12 +156,85 @@ class RequestFriendViewController: UIViewController {
             }
             
             // 相手が3人以上の申請を抱えているとき
-            if self.full == true {
+            else if self.full == true {
+                
+                workingTimer.invalidate()
+                
                 let dialog = UIAlertController(title: "友だち申請失敗", message: "\(self.friendName!)さんは、現在3人から同時に友だち申請されている人気者です。\n申し訳ございませんが、これ以上の申請は受け付けられません。", preferredStyle: .alert)
                 // OKボタン
                 dialog.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
                 // ダイアログを表示
                 self.present(dialog, animated: true, completion: nil)
+            }
+            
+            // エラー
+            else if requestSuccess == false {
+                
+                workingTimer.invalidate()
+                
+                let dialog = UIAlertController(title: "エラー", message: "処理に失敗しました。\n申し訳ございませんが、時間をおいて再度お試しください。", preferredStyle: .alert)
+                // OKボタン
+                dialog.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+                // ダイアログを表示
+                self.present(dialog, animated: true, completion: nil)
+            }
+        }
+    }
+    
+    func reloadFriendRecord() {
+        
+        // 検索条件を作成
+        let predicate = NSPredicate(format: "accountID == %@", argumentArray: [friendID!])
+        let query = CKQuery(recordType: "Accounts", predicate: predicate)
+        
+        // 検索したレコードの値を更新
+        publicDatabase.perform(query, inZoneWith: nil, completionHandler: {(records, error) in
+            
+            if let error = error {
+                print("申請エラー1: \(error)")
+                self.requestSuccess = false
+                return
+            }
+            
+            for record in records! {
+                // すでに申請済みのとき
+                if self.requestedAccounts.contains(myID!) {
+                    // 01~03のうち何番目に申請されているか
+                    if let index = self.requestedAccounts.index(of: myID!) {
+                        // 自分のIDがあるところにNOを挿入
+                        record["requestedAccountID_0\((index + 1).description)"] = "NO"
+                    }
+                }
+                
+                // これから申請するとき
+                else {
+                    // 01~03のうち、NOのところに申請する
+                    if self.requestedAccounts[0] == "NO" {
+                        record["requestedAccountID_01"] = myID!
+                    } else if self.requestedAccounts[1] == "NO" {
+                        record["requestedAccountID_02"] = myID!
+                    } else if self.requestedAccounts[2] == "NO" {
+                        record["requestedAccountID_03"] = myID!
+                    }
+                    
+                    // NOがないとき
+                    else {
+                        print("相手の申請数の上限を超えています")
+                        self.full = true
+                        return
+                    }
+                }
+                
+                self.publicDatabase.save(record, completionHandler: {(record, error) in
+                    
+                    if let error = error {
+                        print("申請エラー2: \(error)")
+                        self.requestSuccess = false
+                        return
+                    }
+                    print("友だち申請／キャンセル成功")
+                    self.requestSuccess = true
+                })
             }
         })
     }
