@@ -797,8 +797,12 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
         for i in 0...(participantIDs.count - 1) {
             // 位置情報取得
             fetchLocation(accountID: participantIDs[i], count: i, completion: {
-                // ピンの座標を取得した位置情報に指定
-                self.participantAnnotations[i].coordinate = self.participantLocations[i].coordinate
+                // メインスレッドで処理
+                DispatchQueue.main.async { [weak self] in
+                    guard let `self` = self else { return }
+                    // ピンの座標を取得した位置情報に指定
+                    self.participantAnnotations[i].coordinate = self.participantLocations[i].coordinate
+                }
             })
         }
     }
