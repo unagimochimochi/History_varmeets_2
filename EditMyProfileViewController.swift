@@ -44,12 +44,21 @@ class EditMyProfileViewController: UIViewController, UITextFieldDelegate, UIText
         
         // bioTextViewのフォント設定（不具合でTimesNewRomanになるのを防ぐ）
         let stringAttributes: [NSAttributedString.Key : Any] = [.font : UIFont.systemFont(ofSize: 14.0)]
-        bioTextView.attributedText = NSAttributedString(string: "自己紹介（100文字以内）", attributes: stringAttributes)
         
-        if #available(iOS 13.0, *) {
-            bioTextView.textColor = .systemGray3
+        if let existingBio = bio {
+            bioTextView.attributedText = NSAttributedString(string: existingBio, attributes: stringAttributes)
+            if #available(iOS 13.0, *) {
+                bioTextView.textColor = .label
+            } else {
+                bioTextView.textColor = .black
+            }
         } else {
-            bioTextView.textColor = .gray
+            bioTextView.attributedText = NSAttributedString(string: "自己紹介（100文字以内）", attributes: stringAttributes)
+            if #available(iOS 13.0, *) {
+                bioTextView.textColor = .placeholderText
+            } else {
+                bioTextView.textColor = .gray
+            }
         }
 
         // 名前入力時の判定
@@ -172,7 +181,11 @@ class EditMyProfileViewController: UIViewController, UITextFieldDelegate, UIText
             textView.text = ""
         }
         
-        textView.textColor = .black
+        if #available(iOS 13.0, *) {
+            textView.textColor = .label
+        } else {
+            textView.textColor = .black
+        }
         
         // 入力中は保存ボタンを無効にする
         saveButton.isEnabled = false

@@ -140,4 +140,16 @@ class MyProfileViewController: UIViewController {
         }
     }
     
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        
+        guard let identifier = segue.identifier else {
+            return
+        }
+        
+        if identifier == "toEditMyProfileVC" {
+            let editMyProfileVC = segue.destination as! EditMyProfileViewController
+            editMyProfileVC.bio = fetchedBio
+        }
+    }
+    
 }
