@@ -24,6 +24,7 @@ class PlanDetailsViewController: UIViewController, UITableViewDelegate, UITableV
     }
     
     var authorName: String?
+    var authorBio: String?
     
     var participantIDs = [String]()
     var participantNames = [String]()
@@ -276,6 +277,12 @@ class PlanDetailsViewController: UIViewController, UITableViewDelegate, UITableV
             if let name = record?.value(forKey: "accountName") as? String {
                 self.authorName = name
             }
+            
+            if let bio = record?.value(forKey: "accountBio") as? String {
+                self.authorBio = bio
+            } else {
+                self.authorBio = "自己紹介が未入力です"
+            }
         })
     }
     
@@ -289,6 +296,8 @@ class PlanDetailsViewController: UIViewController, UITableViewDelegate, UITableV
             let addPlanVC = segue.destination as! AddPlanViewController
             addPlanVC.planTitle = self.planTitle
             addPlanVC.dateAndTime = self.dateAndTime
+            addPlanVC.participantIDs = self.participantIDs
+            addPlanVC.participantNames = self.participantNames
             addPlanVC.place = self.place
             addPlanVC.lon = self.lonStr ?? ""
             addPlanVC.lat = self.latStr ?? ""
@@ -299,6 +308,13 @@ class PlanDetailsViewController: UIViewController, UITableViewDelegate, UITableV
             placeVC.place = self.place
             placeVC.lonStr = self.lonStr
             placeVC.latStr = self.latStr
+        }
+        
+        else if identifier == "PlanDetailsVCtoParticipantProfileVC" {
+            let participantProfileVC = segue.destination as! ParticipantProfileViewController
+            participantProfileVC.receiveName = self.authorName
+            participantProfileVC.receiveID = self.authorID
+            participantProfileVC.receiveBio = self.authorBio
         }
     }
     
