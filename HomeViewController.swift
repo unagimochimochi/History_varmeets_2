@@ -46,6 +46,8 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     var fetchPlansTimer: Timer!
     var fetchPlansCheck = [Bool]()
     
+    var firstLaunch = false
+    
     @IBOutlet weak var planTable: UITableView!
     
     @IBOutlet weak var countdownView: UIView!
@@ -423,176 +425,19 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             myID = userDefaults.string(forKey: "myID")
             print("myID: \(myID!)")
             
-            // 友だち申請取得監視タイマースタート
-            fetchRequestsTimer = Timer.scheduledTimer(timeInterval: 0.5, target: self, selector: #selector(completedFetchingRequests), userInfo: nil, repeats: true)
-            
-            // 友だち申請をデータベースから取得
-            fetchRequests()
-            
-            // 友だち一覧をデータベースから取得
-            fetchFriendIDs(id: myID!)
-            
-            // 予定一覧取得監視タイマースタート
-            fetchPlansTimer = Timer.scheduledTimer(timeInterval: 0.5, target: self, selector: #selector(completedFetchingPlans), userInfo: nil, repeats: true)
-            
-            // 予定一覧をデータベースから取得
-            fetchMyPlanIDs(completion: {
-                
-                // ID取得が終わったら他の配列に適当な初期値を代入
-                self.dateAndTimes.removeAll()
-                estimatedTimes.removeAll()
-                self.planTitles.removeAll()
-                self.participantIDs.removeAll()
-                self.participantNames.removeAll()
-                self.numberOfParticipants.removeAll()
-                self.places.removeAll()
-                self.lats.removeAll()
-                self.lons.removeAll()
-                
-                if myPlanIDs.isEmpty == false {
-                    
-                    for _ in 0...(myPlanIDs.count - 1) {
-                        self.dateAndTimes.append("日時")
-                        estimatedTimes.append(Date(timeIntervalSinceReferenceDate: 0.0))
-                        self.planTitles.append("予定サンプル")
-                        self.participantIDs.append("participantID")
-                        self.participantNames.append("参加者")
-                        self.numberOfParticipants.append(0)
-                        self.places.append("場所")
-                        self.lats.append("緯度")
-                        self.lons.append("経度")
-                        self.fetchPlansCheck.append(false)
-                    }
-                    
-                    // 予定の詳細を取得
-                    for i in 0...(myPlanIDs.count - 1) {
-                        self.fetchMyPlanDetails(index: i, completion: {
-                            // estimatedTimeから文字列に
-                            let formatter = DateFormatter()
-                            formatter.timeStyle = .short
-                            formatter.dateStyle = .full
-                            formatter.timeZone = NSTimeZone.local
-                            formatter.locale = Locale(identifier: "ja_JP")
-                            self.dateAndTimes[i] = formatter.string(from: estimatedTimes[i])
-                            
-                            // 参加代表者のIDから名前を取得
-                            self.fetchParticipantName(index: i, completion: {
-                                
-                                // 完了チェック
-                                self.fetchPlansCheck[i] = true
-                                
-                                // UserDefaultsに保存
-                                userDefaults.set(myPlanIDs, forKey: "PlanIDs")
-                                userDefaults.set(self.dateAndTimes, forKey: "DateAndTimes")
-                                userDefaults.set(estimatedTimes, forKey: "EstimatedTimes")
-                                userDefaults.set(self.planTitles, forKey: "PlanTitles")
-                                userDefaults.set(self.participantNames, forKey: "ParticipantNames")
-                                userDefaults.set(self.numberOfParticipants, forKey: "NumberOfParticipants")
-                                userDefaults.set(self.places, forKey: "Places")
-                                userDefaults.set(self.lats, forKey: "lats")
-                                userDefaults.set(self.lons, forKey: "lons")
-                            })
-                        })
-                    }
-                }
-                
-                // データベースの予定IDが空のとき
-                else {
-                    print("データベースに予定なし")
-                    
-                    // タイマーを止める
-                    if let workingTimer = self.fetchPlansTimer {
-                        workingTimer.invalidate()
-                    }
-                }
-            })
+            firstWork()
         }
         
-        if userDefaults.object(forKey: "myName") != nil {
-            myName = userDefaults.string(forKey: "myName")
-            print("myName: \(myName!)")
+        // myIDがnilのとき（初回起動時）
+        else {
+            firstLaunch = true
         }
         
-        if userDefaults.object(forKey: "PlanIDs") != nil {
-            myPlanIDs = userDefaults.stringArray(forKey: "PlanIDs")!
-        } else {
-            myPlanIDs = ["samplePlan"]
-        }
-        
-        if userDefaults.object(forKey: "DateAndTimes") != nil {
-            self.dateAndTimes = userDefaults.stringArray(forKey: "DateAndTimes")!
-        } else {
-            self.dateAndTimes = ["日時"]
-        }
-        
-        if userDefaults.object(forKey: "EstimatedTimes") != nil {
-            estimatedTimes = userDefaults.array(forKey: "EstimatedTimes") as! [Date]
-        } else {
-            // estimatedTimesの初期値に 00:00:00 UTC on 1 January 2001 を設定
-            let referenceDate = Date(timeIntervalSinceReferenceDate: 0.0)
-            estimatedTimes = [referenceDate]
-        }
-        
-        if userDefaults.object(forKey: "PlanTitles") != nil {
-            self.planTitles = userDefaults.stringArray(forKey: "PlanTitles")!
-        } else {
-            self.planTitles = ["予定サンプル"]
-        }
-        
-        if userDefaults.object(forKey: "ParticipantNames") != nil {
-            self.participantNames = userDefaults.stringArray(forKey: "ParticipantNames")!
-        } else {
-            self.participantNames = ["参加者"]
-        }
-        
-        if userDefaults.object(forKey: "NumberOfParticipants") != nil {
-            self.numberOfParticipants = userDefaults.array(forKey: "NumberOfParticipants") as! [Int]
-        } else {
-            self.numberOfParticipants = [0]
-        }
-        
-        if userDefaults.object(forKey: "Places") != nil {
-            self.places = userDefaults.stringArray(forKey: "Places")!
-        } else {
-            self.places = ["場所"]
-        }
-        
-        if userDefaults.object(forKey: "lons") != nil {
-            self.lons = userDefaults.stringArray(forKey: "lons")!
-            self.lats = userDefaults.stringArray(forKey: "lats")!
-        } else {
-            self.lons = ["経度"]
-            self.lats = ["緯度"]
-        }
-        
-        if userDefaults.object(forKey: "favPlaces") != nil {
-            favPlaces = userDefaults.stringArray(forKey: "favPlaces")!
-        } else {
-            favPlaces = ["お気に入り"]
-        }
-        
-        if userDefaults.object(forKey: "favAddresses") != nil {
-            favAddresses = userDefaults.stringArray(forKey: "favAddresses")!
-        } else {
-            favAddresses = ["住所"]
-        }
-        
-        if userDefaults.object(forKey: "favLats") != nil {
-            favLats = userDefaults.array(forKey: "favLats") as! [Double]
-        } else {
-            favLats = [35.658584]
-        }
-        
-        if userDefaults.object(forKey: "favLons") != nil {
-            favLons = userDefaults.array(forKey: "favLons") as! [Double]
-        } else {
-            favLons = [139.7454316]
-        }
+        readUserDefaults()
     }
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        // print(#function)
 
         if let indexPath = planTable.indexPathForSelectedRow {
             print("deselect")
@@ -612,6 +457,13 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             
             self.performSegue(withIdentifier: "toFirstVC", sender: nil)
         }
+        
+        // 初回起動時の登録orログイン後（viewDidLoad()したときにmyIDがnilのためいろいろ取得できていないとき）
+        if myID != nil && firstLaunch == true {
+            firstWork()
+            firstLaunch = false
+        }
+        
     }
     
     override func viewWillDisappear(_ animated: Bool) {
@@ -787,38 +639,52 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     }
     
     @IBAction func tappedCompleteButton(_ sender: Any) {
-        // カウントダウンを非表示
-        hiddenCountdown()
         
-        // 予定サンプルが消されていないとき
-        if planTitles.contains("予定サンプル") == true {
-            // 並べ替え用の配列に予定時刻をセット
-            estimatedTimesSort = estimatedTimes
-            // 並べ替え用の配列で並べ替え
-            estimatedTimesSort.sort { $0 < $1 }
+        let dialog = UIAlertController(title: "待ち合わせ完了", message: "待ち合わせはできましたか？\n予定を削除します。", preferredStyle: .alert)
+        
+        // キャンセルボタン
+        let cancel = UIAlertAction(title: "キャンセル", style: .cancel, handler: nil)
+        
+        // 削除ボタン
+        let delete = UIAlertAction(title: "削除", style: .destructive, handler: { action in
             
-            // 一番近い予定のindexを取得
-            if let index = estimatedTimes.index(of: estimatedTimesSort[1]) {
-                // index番目の配列とuserDefaultsを削除
-                remove(index: index)
-            }
-        }
-        
-        // 予定サンプルが消されているとき
-        else {
-            // 並べ替え用の配列に予定時刻をセット
-            estimatedTimesSort = estimatedTimes
-            // 並べ替え用の配列で並べ替え
-            estimatedTimesSort.sort { $0 < $1 }
+            // カウントダウンを非表示
+            self.hiddenCountdown()
             
-            // 一番近い予定のindexを取得
-            if let index = estimatedTimes.index(of: estimatedTimesSort[0]) {
-                // index番目の配列とuserDefaultsを削除
-                remove(index: index)
+            // 予定サンプルが消されていないとき
+            if self.planTitles.contains("予定サンプル") == true {
+                // 並べ替え用の配列に予定時刻をセット
+                estimatedTimesSort = estimatedTimes
+                // 並べ替え用の配列で並べ替え
+                estimatedTimesSort.sort { $0 < $1 }
+                
+                // 一番近い予定のindexを取得
+                if let index = estimatedTimes.index(of: estimatedTimesSort[1]) {
+                    // index番目の配列とuserDefaultsを削除
+                    self.remove(index: index)
+                }
             }
-        }
+            
+            // 予定サンプルが消されているとき
+            else {
+                // 並べ替え用の配列に予定時刻をセット
+                estimatedTimesSort = estimatedTimes
+                // 並べ替え用の配列で並べ替え
+                estimatedTimesSort.sort { $0 < $1 }
+                
+                // 一番近い予定のindexを取得
+                if let index = estimatedTimes.index(of: estimatedTimesSort[0]) {
+                    // index番目の配列とuserDefaultsを削除
+                    self.remove(index: index)
+                }
+            }
+        })
         
-        planTable.reloadData()
+        // Actionを追加
+        dialog.addAction(cancel)
+        dialog.addAction(delete)
+        // ダイアログを表示
+        self.present(dialog, animated: true, completion: nil)
     }
     
     func fetchRequests() {
@@ -1208,6 +1074,177 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         completeButton.isEnabled = false
     }
     
+    func firstWork() {
+        
+        // 友だち申請取得監視タイマースタート
+        fetchRequestsTimer = Timer.scheduledTimer(timeInterval: 0.5, target: self, selector: #selector(completedFetchingRequests), userInfo: nil, repeats: true)
+        
+        // 友だち申請をデータベースから取得
+        fetchRequests()
+        
+        // 友だち一覧をデータベースから取得
+        fetchFriendIDs(id: myID!)
+        
+        // 予定一覧取得監視タイマースタート
+        fetchPlansTimer = Timer.scheduledTimer(timeInterval: 0.5, target: self, selector: #selector(completedFetchingPlans), userInfo: nil, repeats: true)
+        
+        // 予定一覧をデータベースから取得
+        fetchMyPlanIDs(completion: {
+            
+            // ID取得が終わったら他の配列に適当な初期値を代入
+            self.dateAndTimes.removeAll()
+            estimatedTimes.removeAll()
+            self.planTitles.removeAll()
+            self.participantIDs.removeAll()
+            self.participantNames.removeAll()
+            self.numberOfParticipants.removeAll()
+            self.places.removeAll()
+            self.lats.removeAll()
+            self.lons.removeAll()
+            
+            if myPlanIDs.isEmpty == false {
+                
+                for _ in 0...(myPlanIDs.count - 1) {
+                    self.dateAndTimes.append("日時")
+                    estimatedTimes.append(Date(timeIntervalSinceReferenceDate: 0.0))
+                    self.planTitles.append("予定サンプル")
+                    self.participantIDs.append("participantID")
+                    self.participantNames.append("参加者")
+                    self.numberOfParticipants.append(0)
+                    self.places.append("場所")
+                    self.lats.append("緯度")
+                    self.lons.append("経度")
+                    self.fetchPlansCheck.append(false)
+                }
+                
+                // 予定の詳細を取得
+                for i in 0...(myPlanIDs.count - 1) {
+                    self.fetchMyPlanDetails(index: i, completion: {
+                        // estimatedTimeから文字列に
+                        let formatter = DateFormatter()
+                        formatter.timeStyle = .short
+                        formatter.dateStyle = .full
+                        formatter.timeZone = NSTimeZone.local
+                        formatter.locale = Locale(identifier: "ja_JP")
+                        self.dateAndTimes[i] = formatter.string(from: estimatedTimes[i])
+                        
+                        // 参加代表者のIDから名前を取得
+                        self.fetchParticipantName(index: i, completion: {
+                            
+                            // 完了チェック
+                            self.fetchPlansCheck[i] = true
+                            
+                            // UserDefaultsに保存
+                            userDefaults.set(myPlanIDs, forKey: "PlanIDs")
+                            userDefaults.set(self.dateAndTimes, forKey: "DateAndTimes")
+                            userDefaults.set(estimatedTimes, forKey: "EstimatedTimes")
+                            userDefaults.set(self.planTitles, forKey: "PlanTitles")
+                            userDefaults.set(self.participantNames, forKey: "ParticipantNames")
+                            userDefaults.set(self.numberOfParticipants, forKey: "NumberOfParticipants")
+                            userDefaults.set(self.places, forKey: "Places")
+                            userDefaults.set(self.lats, forKey: "lats")
+                            userDefaults.set(self.lons, forKey: "lons")
+                        })
+                    })
+                }
+            }
+            
+            // データベースの予定IDが空のとき
+            else {
+                print("データベースに予定なし")
+                
+                // タイマーを止める
+                if let workingTimer = self.fetchPlansTimer {
+                    workingTimer.invalidate()
+                }
+            }
+        })
+    }
+    
+    func readUserDefaults() {
+        
+        if userDefaults.object(forKey: "myName") != nil {
+            myName = userDefaults.string(forKey: "myName")
+            print("myName: \(myName!)")
+        }
+        
+        if userDefaults.object(forKey: "PlanIDs") != nil {
+            myPlanIDs = userDefaults.stringArray(forKey: "PlanIDs")!
+        } else {
+            myPlanIDs = ["samplePlan"]
+        }
+        
+        if userDefaults.object(forKey: "DateAndTimes") != nil {
+            self.dateAndTimes = userDefaults.stringArray(forKey: "DateAndTimes")!
+        } else {
+            self.dateAndTimes = ["日時"]
+        }
+        
+        if userDefaults.object(forKey: "EstimatedTimes") != nil {
+            estimatedTimes = userDefaults.array(forKey: "EstimatedTimes") as! [Date]
+        } else {
+            // estimatedTimesの初期値に 00:00:00 UTC on 1 January 2001 を設定
+            let referenceDate = Date(timeIntervalSinceReferenceDate: 0.0)
+            estimatedTimes = [referenceDate]
+        }
+        
+        if userDefaults.object(forKey: "PlanTitles") != nil {
+            self.planTitles = userDefaults.stringArray(forKey: "PlanTitles")!
+        } else {
+            self.planTitles = ["予定サンプル"]
+        }
+        
+        if userDefaults.object(forKey: "ParticipantNames") != nil {
+            self.participantNames = userDefaults.stringArray(forKey: "ParticipantNames")!
+        } else {
+            self.participantNames = ["参加者"]
+        }
+        
+        if userDefaults.object(forKey: "NumberOfParticipants") != nil {
+            self.numberOfParticipants = userDefaults.array(forKey: "NumberOfParticipants") as! [Int]
+        } else {
+            self.numberOfParticipants = [0]
+        }
+        
+        if userDefaults.object(forKey: "Places") != nil {
+            self.places = userDefaults.stringArray(forKey: "Places")!
+        } else {
+            self.places = ["場所"]
+        }
+        
+        if userDefaults.object(forKey: "lons") != nil {
+            self.lons = userDefaults.stringArray(forKey: "lons")!
+            self.lats = userDefaults.stringArray(forKey: "lats")!
+        } else {
+            self.lons = ["経度"]
+            self.lats = ["緯度"]
+        }
+        
+        if userDefaults.object(forKey: "favPlaces") != nil {
+            favPlaces = userDefaults.stringArray(forKey: "favPlaces")!
+        } else {
+            favPlaces = ["お気に入り"]
+        }
+        
+        if userDefaults.object(forKey: "favAddresses") != nil {
+            favAddresses = userDefaults.stringArray(forKey: "favAddresses")!
+        } else {
+            favAddresses = ["住所"]
+        }
+        
+        if userDefaults.object(forKey: "favLats") != nil {
+            favLats = userDefaults.array(forKey: "favLats") as! [Double]
+        } else {
+            favLats = [35.658584]
+        }
+        
+        if userDefaults.object(forKey: "favLons") != nil {
+            favLons = userDefaults.array(forKey: "favLons") as! [Double]
+        } else {
+            favLons = [139.7454316]
+        }
+    }
+    
     func remove(index: Int) {
         
         myPlanIDs.remove(at: index)
@@ -1264,6 +1301,8 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                 })
             }
         })
+        
+        planTable.reloadData()
     }
     
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
