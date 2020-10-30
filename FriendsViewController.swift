@@ -9,10 +9,6 @@
 import UIKit
 import CloudKit
 
-protocol CountObserver {
-    func didChange(newCount :Int)
-}
-
 class FriendsViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
     
     @IBOutlet var friendsTableView: UITableView!
@@ -32,37 +28,55 @@ class FriendsViewController: UIViewController, UITableViewDataSource, UITableVie
         
     override func viewDidLoad() {
         super.viewDidLoad()
+    }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
         
         friendIDs.removeAll()
         friendNames.removeAll()
         friendBios.removeAll()
+        check.removeAll()
         
         friendsTableView.reloadData()
         
         // タイマースタート
-        timer = Timer.scheduledTimer(timeInterval: 0.5, target: self, selector: #selector(update), userInfo: nil, repeats: true)
+        timer = Timer.scheduledTimer(timeInterval: 0.5, target: self, selector: #selector(fetchingFriends), userInfo: nil, repeats: true)
         
         fetchFriends(completion: {
             // 友だち一覧を取得し終えたら名前とbioに初期値（ID）を代入
-            for i in 0...(self.friendIDs.count - 1) {
-                self.friendNames.append(self.friendIDs[i])
-                self.friendBios.append(self.friendIDs[i])
-                self.check.append(false)
-            }
-            
-            // 名前とbioを取得
-            for i in 0...(self.friendIDs.count - 1) {
-                self.fetchFriendInfo(index: i, completion: {
-                    self.check[i] = true
-                })
+            if self.friendIDs.isEmpty == false {
+                
+                for i in 0...(self.friendIDs.count - 1) {
+                    self.friendNames.append(self.friendIDs[i])
+                    self.friendBios.append(self.friendIDs[i])
+                    self.check.append(false)
+                }
+                
+                // 名前とbioを取得
+                for i in 0...(self.friendIDs.count - 1) {
+                    self.fetchFriendInfo(index: i, completion: {
+                        self.check[i] = true
+                    })
+                }
             }
         })
     }
     
-    @objc func update() {
-        print("update")
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        
+        if let workingTimer = timer {
+            workingTimer.invalidate()
+        }
+    }
+    
+    @objc func fetchingFriends() {
+        print("Now fetching my friends")
         
         if check.contains(false) == false {
+            print("Completed fetching my friends!")
+            
             // タイマーを止める
             if let workingTimer = timer {
                 workingTimer.invalidate()
@@ -155,7 +169,11 @@ class FriendsViewController: UIViewController, UITableViewDataSource, UITableVie
     
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         
-        if segue.identifier == "toFriendProfileVC" {
+        guard let identifier = segue.identifier else {
+            return
+        }
+        
+        if identifier == "toFriendProfileVC" {
             
             let fpVC = segue.destination as! FriendProfileViewController
 
