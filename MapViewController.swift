@@ -28,6 +28,7 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
     @IBOutlet var longPressGesRec: UILongPressGestureRecognizer!
     
     @IBOutlet weak var addPlanButton: UIButton!    // オレンジの丸いボタン
+    @IBOutlet weak var focusOnMyselfButton: UIButton!
     
     @IBOutlet weak var placeSearchBar: UISearchBar!
     
@@ -293,6 +294,11 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
             // ピンを最初から選択状態にする
             mapView.selectAnnotation(annotation, animated: true)
         }
+    }
+    
+    @IBAction func focusOnMyself(_ sender: Any) {
+        mapView.setCenter(mapView.userLocation.coordinate, animated: true)
+        mapView.showsUserLocation = true
     }
     
     // 地図の初期化関数
@@ -810,6 +816,7 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
     func displayDetailsView() {
         detailsViewHeight.constant = 150
         addPlanButton.isHidden = true
+        focusOnMyselfButton.isHidden = true
         placeNameLabel.isHidden = false
         placeAddressLabel.isHidden = false
         addFavButton.isHidden = false
@@ -819,6 +826,7 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
     func hiddenDetailsView() {
         detailsViewHeight.constant = 0
         addPlanButton.isHidden = false
+        focusOnMyselfButton.isHidden = false
         placeNameLabel.isHidden = true
         placeAddressLabel.isHidden = true
         addFavButton.isHidden = true
