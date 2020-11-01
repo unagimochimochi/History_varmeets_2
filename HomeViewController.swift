@@ -30,7 +30,8 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     var lats = [String]()
     
     let publicDatabase = CKContainer.default().publicCloudDatabase
-    var planIDsOnDatabase = [[String]]()
+    
+    var planIDsOnDatabase = [[String]]()    // 予定作成時・編集時にデータベースから取得
     
     var fetchedRequests = ["NO", "NO", "NO"]
     var friendIDs = [String]()    // 起動時の自分の友だち一覧
@@ -204,6 +205,8 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             return
         }
         
+        planIDsOnDatabase.removeAll()
+        
         // 日時
         var toSaveEstimatedTime: Date?
         
@@ -369,7 +372,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             }
                 
             if toSaveParticipantIDs.isEmpty == false {
-                record["participantIDs"] = toSaveParticipantIDs as [String]
+                record["preparedParticipantIDs"] = toSaveParticipantIDs as [String]
             }
                 
             if let savePlaceName = toSavePlaceName {
@@ -820,7 +823,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                             print("お気に入りの住所取得エラー: \(error)")
                             return
                         }
-                        print("return後: \(i)")
+                        
                         if let placemark = placemarks?.first,
                            let administrativeArea = placemark.administrativeArea,    //県
                            let locality = placemark.locality,    // 市区町村
@@ -934,6 +937,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         }
     }
     
+    // 予定作成時
     func fetchPlanIDs(accountID: String, index: Int, completion: @escaping () -> ()) {
         print("\(accountID)の予定一覧取得開始")
         
@@ -946,13 +950,30 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                 return
             }
             
-            if let planIDs = record?.value(forKey: "planIDs") as? [String] {
+            // 作成者
+            if index == 0 {
                 
-                for planID in planIDs {
-                    self.planIDsOnDatabase[index].append(planID)
+                if let planIDs = record?.value(forKey: "planIDs") as? [String] {
+                    
+                    for planID in planIDs {
+                        self.planIDsOnDatabase[index].append(planID)
+                    }
+                } else {
+                    print("\(accountID)のデータベースの予定なし")
                 }
-            } else {
-                print("\(accountID)のデータベースの予定なし")
+            }
+            
+            // 参加候補者
+            else {
+                
+                if let preparedPlanIDs = record?.value(forKey: "preparedPlanIDs") as? [String] {
+                    
+                    for preparedPlanID in preparedPlanIDs {
+                        self.planIDsOnDatabase[index].append(preparedPlanID)
+                    }
+                } else {
+                    print("\(accountID)のデータベースの予定予備軍なし")
+                }
             }
             
             print("\(accountID)の予定一覧取得完了")
@@ -977,7 +998,15 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             
             for record in records! {
                 
-                record["planIDs"] = self.planIDsOnDatabase[index] as [String]
+                // 作成者
+                if index == 0 {
+                    record["planIDs"] = self.planIDsOnDatabase[index] as [String]
+                }
+                
+                // 参加候補者
+                else {
+                    record["preparedPlanIDs"] = self.planIDsOnDatabase[index] as [String]
+                }
                 
                 self.publicDatabase.save(record, completionHandler: {(record, error) in
                     
@@ -985,7 +1014,6 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                         print("\(accountID)のデータベースの予定ID追加エラー2: \(error)")
                         return
                     }
-                    
                     print("\(accountID)のデータベースの予定ID追加成功")
                 })
             }
