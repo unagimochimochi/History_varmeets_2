@@ -38,6 +38,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     var friendIDsToMe = [String]()    // friendIDs配列に申請許可者を追加した一覧
     var requestedIDs = [String]()
     var fetchedApplicantFriendIDs = [[String]]()
+    var fetchedPreparedPlanIDs = [String]()    // 起動時にデータベースから取得する自分の予定候補ID
     
     var timer: Timer!
     
@@ -195,6 +196,108 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                     // 友だち（申請者）の友だち一覧を更新
                     self.reloadApplicantFriendIDs(count: i)
                 })
+            }
+        }
+    }
+    
+    @IBAction func approvedPlan(sender: UIStoryboardSegue) {
+        
+        if let approvedPlanVC = sender.source as? ApprovePlanViewController {
+            
+            guard let approvedPlanID = approvedPlanVC.planID else {
+                alert(title: "エラー", message: "予定を承認できませんでした。")
+                return
+            }
+            
+            let predicate1 = NSPredicate(format: "accountID == %@", argumentArray: [myID!])
+            let query1 = CKQuery(recordType: "Accounts", predicate: predicate1)
+            
+            publicDatabase.perform(query1, inZoneWith: nil, completionHandler: {(records, error) in
+                
+                if let error = error {
+                    print("予定承認（Accounts）エラー1: \(error)")
+                    self.alert(title: "予定承認（Accounts）エラー1", message: "予定を承認できませんでした。")
+                    return
+                }
+                
+                for record in records! {
+                    
+                    // 予定を承認する場合
+                    if approvedPlanVC.approval == true {
+                        myPlanIDs.append(approvedPlanID)
+                        self.planTitles.append(approvedPlanVC.planTitle!)
+                        estimatedTimes.append(approvedPlanVC.estimatedTime!)
+                        self.dateAndTimes.append(approvedPlanVC.dateAndTime!)
+                        self.participantIDs.append(approvedPlanVC.authorID!)
+                        self.participantNames.append(approvedPlanVC.authorName!)
+                        self.numberOfParticipants.append(approvedPlanVC.everyoneIDsExceptAuthor.count + 1)
+                        self.places.append(approvedPlanVC.place!)
+                        self.lats.append((approvedPlanVC.location?.coordinate.latitude.description)!)
+                        self.lons.append((approvedPlanVC.location?.coordinate.longitude.description)!)
+                    }
+                    record["planIDs"] = myPlanIDs as [String]
+                    
+                    // 起動時に取得した予定候補ID一覧から承認／非承認する予定IDを抜く
+                    if let index = self.fetchedPreparedPlanIDs.index(of: approvedPlanID) {
+                        self.fetchedPreparedPlanIDs.remove(at: index)
+                    }
+                    record["preparedPlanIDs"] = self.fetchedPreparedPlanIDs as [String]
+                    
+                    self.publicDatabase.save(record, completionHandler: {(record, error) in
+                        
+                        if let error = error {
+                            print("予定承認（Accounts）エラー2: \(error)")
+                            self.alert(title: "予定承認（Accounts）エラー2", message: "予定を承認できませんでした。")
+                            return
+                        }
+                        print("予定承認（Accounts）成功")
+                    })
+                }
+            })
+            
+            let predicate2 = NSPredicate(format: "planID == %@", argumentArray: [approvedPlanID])
+            let query2 = CKQuery(recordType: "Plans", predicate: predicate2)
+            
+            publicDatabase.perform(query2, inZoneWith: nil, completionHandler: {(records, error) in
+                
+                if let error = error {
+                    print("予定承認（Plans）エラー1: \(error)")
+                    self.alert(title: "予定承認（Plans）エラー1", message: "予定を承認できませんでした。")
+                    return
+                }
+                
+                for record in records! {
+                    
+                    var newParticipantIDs = [String]()
+                    newParticipantIDs = approvedPlanVC.participantIDs
+                    // 予定を承認する場合、参加者に自分のIDを追加
+                    if approvedPlanVC.approval == true {
+                        newParticipantIDs.append(myID!)
+                    }
+                    record["participantIDs"] = newParticipantIDs as [String]
+                    
+                    var newPreparedParticipantIDs = [String]()
+                    newPreparedParticipantIDs = approvedPlanVC.preparedParticipantIDs
+                    // 当初の予定参加候補者ID一覧から自分のIDを抜く
+                    if let index = newPreparedParticipantIDs.index(of: myID!) {
+                        newPreparedParticipantIDs.remove(at: index)
+                    }
+                    record["preparedParticipantIDs"] = newPreparedParticipantIDs as [String]
+                    
+                    self.publicDatabase.save(record, completionHandler: {(record, error) in
+                        
+                        if let error = error {
+                            print("予定承認（Plans）エラー2: \(error)")
+                            self.alert(title: "予定承認（Plans）エラー2", message: "予定を承認できませんでした。")
+                            return
+                        }
+                        print("予定承認（Plans）成功")
+                    })
+                }
+            })
+            
+            DispatchQueue.main.asyncAfter(deadline: DispatchTime.now() + 1.0) {
+                self.planTable.reloadData()
             }
         }
     }
@@ -508,7 +611,6 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         
         let placeLabel = cell.viewWithTag(5) as! UILabel
         placeLabel.text = self.places[indexPath.row]
-        print("経度: \(self.lons[indexPath.row]), 緯度: \(self.lats[indexPath.row])")
         
         return cell
     }
@@ -690,6 +792,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         self.present(dialog, animated: true, completion: nil)
     }
     
+    // ついでに予定候補IDも取得
     func fetchRequests() {
         
         let recordID = CKRecord.ID(recordName: "accountID-\(myID!)")
@@ -720,26 +823,34 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             }
             
             self.fetchRequestsCheck = true
+            
+            if let preparedPlanIDs = record?.value(forKey: "preparedPlanIDs") as? [String] {
+                for preparedPlanID in preparedPlanIDs {
+                    self.fetchedPreparedPlanIDs.append(preparedPlanID)
+                }
+            }
         })
     }
     
-    @objc func completedFetchingRequests() {
-        print("fetchingRequests")
+    @objc func fetchingRequests() {
+        print("Now fetching requests")
         
         if fetchRequestsCheck == true {
             
-            print("completeFetchingRequests!")
+            print("Completed fetching requests!")
             
             // タイマーを止める
             if let workingTimer = fetchRequestsTimer {
                 workingTimer.invalidate()
             }
             
-            // 友だち申請されている場合は遷移
-            if fetchedRequests.isEmpty == false {
+            // 予定候補がある・友だち申請されている場合は遷移
+            if fetchedPreparedPlanIDs.isEmpty == false {
+                self.performSegue(withIdentifier: "toApprovePlanVC", sender: nil)
+            } else if fetchedRequests.isEmpty == false {
                 self.performSegue(withIdentifier: "toRequestedVC", sender: nil)
             } else {
-                print("友だち申請なし")
+                print("友だち申請・予定候補なし")
             }
         }
     }
@@ -874,6 +985,12 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                 }
             }
             
+            if let preparedParticipantIDs = record?.value(forKey: "preparedParticipantIDs") as? [String] {
+                for preparedParticipantID in preparedParticipantIDs {
+                    everyone.append(preparedParticipantID)
+                }
+            }
+            
             self.numberOfParticipants[index] = everyone.count
             
             if let myIndex = everyone.index(of: myID!) {
@@ -918,12 +1035,12 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         })
     }
     
-    @objc func completedFetchingPlans() {
-        print("fetchingPlans")
+    @objc func fetchingPlans() {
+        print("Now fetching plans")
         
         if fetchPlansCheck.isEmpty == false && fetchPlansCheck.contains(false) == false {
             
-            print("completedFetchingPlans!")
+            print("Completed fetching plans!")
             
             // タイマーを止める
             if let workingTimer = fetchPlansTimer {
@@ -1105,7 +1222,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     func firstWork() {
         
         // 友だち申請取得監視タイマースタート
-        fetchRequestsTimer = Timer.scheduledTimer(timeInterval: 0.5, target: self, selector: #selector(completedFetchingRequests), userInfo: nil, repeats: true)
+        fetchRequestsTimer = Timer.scheduledTimer(timeInterval: 0.5, target: self, selector: #selector(fetchingRequests), userInfo: nil, repeats: true)
         
         // 友だち申請をデータベースから取得
         fetchRequests()
@@ -1114,7 +1231,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         fetchFriendIDs(id: myID!)
         
         // 予定一覧取得監視タイマースタート
-        fetchPlansTimer = Timer.scheduledTimer(timeInterval: 0.5, target: self, selector: #selector(completedFetchingPlans), userInfo: nil, repeats: true)
+        fetchPlansTimer = Timer.scheduledTimer(timeInterval: 0.5, target: self, selector: #selector(fetchingPlans), userInfo: nil, repeats: true)
         
         // 予定一覧をデータベースから取得
         fetchMyPlanIDs(completion: {
@@ -1333,6 +1450,15 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         planTable.reloadData()
     }
     
+    func alert(title: String?, message: String?) {
+        
+        let dialog = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        // OKボタン
+        dialog.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+        // ダイアログを表示
+        self.present(dialog, animated: true, completion: nil)
+    }
+    
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         
         guard let identifier = segue.identifier else {
@@ -1352,6 +1478,11 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         if identifier == "toRequestedVC" {
             let requestedVC = segue.destination as! RequestedViewController
             requestedVC.requestedIDs = self.fetchedRequests
+        }
+        
+        if identifier == "toApprovePlanVC" {
+            let approvePlanVC = segue.destination as! ApprovePlanViewController
+            approvePlanVC.planID = self.fetchedPreparedPlanIDs[0]
         }
         
         if identifier == "openMenu" {
