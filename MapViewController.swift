@@ -45,7 +45,7 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
     var meetingTimer: Timer!
     var meetingPlace: String?
     var meetingLocation: CLLocation?
-    var meetingAnnotation = MKPointAnnotation()
+    var meetingAnnotation = ArrangeAnnotation()
     var participantIDs = [String]()
     var participantLocations = [CLLocation]()
     var participantAnnotations = [MKPointAnnotation]()
@@ -150,6 +150,7 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
                                 let loc2D = self.meetingLocation?.coordinate
                                 self.meetingAnnotation.coordinate = loc2D!
                                 self.meetingAnnotation.title = self.meetingPlace
+                                self.meetingAnnotation.pinImage = "Destination"
                                 self.mapView.addAnnotation(self.meetingAnnotation)
                                 
                                 // メインスレッドで処理
@@ -354,6 +355,16 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
         detailsButton.setTitleColor(.orange, for: .normal)
         detailsButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 18.0)
         
+        // 待ち合わせ中の目的地
+        if let arrangedAnnotation = annotation as? ArrangeAnnotation {
+            
+            if arrangedAnnotation.pinImage != nil {
+                let destinationAnnotationView = MKAnnotationView(annotation: annotation, reuseIdentifier: nil)
+                destinationAnnotationView.image = UIImage(named: arrangedAnnotation.pinImage)
+                
+                return destinationAnnotationView
+            }
+        }
         // 配列が空のとき（ロングタップでピンを立てたとき）
         if searchAnnotationArray.isEmpty == true && self.annotation.title != nil {
             
@@ -388,6 +399,8 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
             
             return participantAnnotationView
         }
+        
+        
     }
     
     // 吹き出しアクセサリー押下時
@@ -806,8 +819,11 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
                 // メインスレッドで処理
                 DispatchQueue.main.async { [weak self] in
                     guard let `self` = self else { return }
-                    // ピンの座標を取得した位置情報に指定
-                    self.participantAnnotations[i].coordinate = self.participantLocations[i].coordinate
+                    // ピンをアニメーションで移動
+                    UIView.animate(withDuration: 1, animations: {
+                        // ピンの座標を取得した位置情報に指定
+                        self.participantAnnotations[i].coordinate = self.participantLocations[i].coordinate
+                    }, completion: nil)
                 }
             })
         }
