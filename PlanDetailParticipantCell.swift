@@ -4,44 +4,100 @@
 //
 //  Created by 持田侑菜 on 2020/10/09.
 //
+// AutoLayout 参考 https://blog.personal-factory.com/2016/01/11/make-auto-layout-via-code/
+//
 
 import UIKit
 
 class PlanDetailParticipantCell: UITableViewCell {
 
-    @IBOutlet weak var participant1ViewWidth: NSLayoutConstraint!
-    @IBOutlet weak var participant2ViewWidth: NSLayoutConstraint!
-    @IBOutlet weak var participant3ViewWidth: NSLayoutConstraint!
-    @IBOutlet weak var othersViewWidth: NSLayoutConstraint!
+    var participant1View: UIView!
+    var participant1ViewWidth: NSLayoutConstraint!
+    var participant2View: UIView!
+    var participant2ViewWidth: NSLayoutConstraint!
+    var participant3View: UIView!
+    var participant3ViewWidth: NSLayoutConstraint!
+    var othersView: UIView!
+    var othersViewWidth: NSLayoutConstraint!
     
-    @IBOutlet weak var participant1Icon: UIButton!
-    @IBOutlet weak var participant2Icon: UIButton!
-    @IBOutlet weak var participant3Icon: UIButton!
+    var participant1Icon: UIButton!
+    var participant2Icon: UIButton!
+    var participant3Icon: UIButton!
     
-    @IBOutlet weak var participant1Name: UILabel!
-    @IBOutlet weak var participant2Name: UILabel!
-    @IBOutlet weak var participant3Name: UILabel!
+    var participant1Name: UILabel!
+    var participant2Name: UILabel!
+    var participant3Name: UILabel!
     
-    @IBOutlet weak var othersLabel: UILabel!
+    var othersLabel: UILabel!
     
     override func awakeFromNib() {
         super.awakeFromNib()
         
-        participant1Icon.layer.borderColor = UIColor.gray.cgColor // 枠線の色
-        participant1Icon.layer.borderWidth = 0.5 // 枠線の太さ
-        participant1Icon.layer.cornerRadius = participant1Icon.bounds.width / 2 // 丸くする
-        participant1Icon.layer.masksToBounds = true // 丸の外側を消す
+        participant1View = self.viewWithTag(1)
+        participant1View.translatesAutoresizingMaskIntoConstraints = false
+        participant1ViewWidth = NSLayoutConstraint(
+            item: participant1View,
+            attribute: .width,
+            relatedBy: .equal,
+            toItem: participant1View,
+            attribute: .width,
+            multiplier: 0,
+            constant: 0)
+        self.contentView.addConstraint(participant1ViewWidth)
         
-        participant2Icon.layer.borderColor = UIColor.gray.cgColor // 枠線の色
-        participant2Icon.layer.borderWidth = 0.5 // 枠線の太さ
-        participant2Icon.layer.cornerRadius = participant2Icon.bounds.width / 2 // 丸くする
-        participant2Icon.layer.masksToBounds = true // 丸の外側を消す
+        participant1Icon = self.viewWithTag(2) as? UIButton
+        participant1Name = self.viewWithTag(3) as? UILabel
         
-        participant3Icon.layer.borderColor = UIColor.gray.cgColor // 枠線の色
-        participant3Icon.layer.borderWidth = 0.5 // 枠線の太さ
-        participant3Icon.layer.cornerRadius = participant3Icon.bounds.width / 2 // 丸くする
-        participant3Icon.layer.masksToBounds = true // 丸の外側を消す
+        participant2View = self.viewWithTag(4)
+        participant2View.translatesAutoresizingMaskIntoConstraints = false
+        participant2ViewWidth = NSLayoutConstraint(
+            item: participant2View,
+            attribute: .width,
+            relatedBy: .equal,
+            toItem: participant2View,
+            attribute: .width,
+            multiplier: 0,
+            constant: 0)
+        self.contentView.addConstraint(participant2ViewWidth)
+        
+        participant2Icon = self.viewWithTag(5) as? UIButton
+        participant2Name = self.viewWithTag(6) as? UILabel
+        
+        participant3View = self.viewWithTag(7)
+        participant3View.translatesAutoresizingMaskIntoConstraints = false
+        participant3ViewWidth = NSLayoutConstraint(
+            item: participant3View,
+            attribute: .width,
+            relatedBy: .equal,
+            toItem: participant2View,
+            attribute: .width,
+            multiplier: 0,
+            constant: 0)
+        self.contentView.addConstraint(participant3ViewWidth)
+        
+        participant3Icon = self.viewWithTag(8) as? UIButton
+        participant3Name = self.viewWithTag(9) as? UILabel
+        
+        othersView = self.viewWithTag(10)
+        othersView.translatesAutoresizingMaskIntoConstraints = false
+        othersViewWidth = NSLayoutConstraint(
+            item: othersView,
+            attribute: .width,
+            relatedBy: .equal,
+            toItem: othersView,
+            attribute: .width,
+            multiplier: 0,
+            constant: 0)
+        self.contentView.addConstraint(othersViewWidth)
+        
+        othersLabel = self.viewWithTag(11) as? UILabel
+        
+        round(icon: participant1Icon)
+        round(icon: participant2Icon)
+        round(icon: participant3Icon)
     }
+    
+    
     
     func display1() {
         participant1ViewWidth.constant = self.contentView.bounds.width * 0.12
@@ -55,6 +111,8 @@ class PlanDetailParticipantCell: UITableViewCell {
         participant1Name.isHidden = true
     }
     
+    
+    
     func display2() {
         participant2ViewWidth.constant = self.contentView.bounds.width * 0.12
         participant2Icon.isHidden = false
@@ -66,6 +124,8 @@ class PlanDetailParticipantCell: UITableViewCell {
         participant2Icon.isHidden = true
         participant2Name.isHidden = true
     }
+    
+    
     
     func display3() {
         participant3ViewWidth.constant = self.contentView.bounds.width * 0.12
@@ -79,6 +139,8 @@ class PlanDetailParticipantCell: UITableViewCell {
         participant3Name.isHidden = true
     }
     
+    
+    
     func displayOthers() {
         othersViewWidth.constant = self.contentView.bounds.width * 0.15
         othersLabel.isHidden = false
@@ -88,6 +150,18 @@ class PlanDetailParticipantCell: UITableViewCell {
         othersViewWidth.constant = 0
         othersLabel.isHidden = true
     }
+    
+    
+    
+    func round(icon: UIButton) {
+        
+        icon.layer.borderColor = UIColor.gray.cgColor // 枠線の色
+        icon.layer.borderWidth = 0.5 // 枠線の太さ
+        icon.layer.cornerRadius = icon.bounds.width / 2 // 丸くする
+        icon.layer.masksToBounds = true // 丸の外側を消す
+    }
+    
+    
 
     override func setSelected(_ selected: Bool, animated: Bool) {
         super.setSelected(selected, animated: animated)
@@ -95,4 +169,6 @@ class PlanDetailParticipantCell: UITableViewCell {
         // Configure the view for the selected state
     }
 
+    
+    
 }

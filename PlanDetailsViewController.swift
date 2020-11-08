@@ -10,34 +10,34 @@ import CloudKit
 
 class PlanDetailsViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
     
-    let planItem = ["予定作成者", "参加者","場所"]
+    let planItem = ["予定作成者", "参加者", "承認待ち", "場所"]
     
     var planID: String?
     
     var planTitle: String?
     var dateAndTime: String?
     
-    var authorID: String? {
-        didSet {
-            fetchAuthorInfo()
-        }
-    }
-    
+    var authorID: String?
     var authorName: String?
     var authorBio: String?
     
     var participantIDs = [String]()
     var participantNames = [String]()
+    var preparedParticipantIDs = [String]()
+    var preparedParticipantNames = [String]()
+    
+    var fetchParticipantSuccess = [Bool]()
+    var fetchPreparedParticipantSuccess = [Bool]()
+    var fetchSuccess = [false, false, false]    // [予定作成者, 予定参加者, 予定参加候補者]
+    
+    var timer: Timer!
+    var timerCount = 0.0
+    
     var place: String?
     var lonStr: String?
     var latStr: String?
     
     let publicDatabase = CKContainer.default().publicCloudDatabase
-    
-    var timer1: Timer!
-    var timer2: Timer!
-    var checkCount1 = 0
-    var checkCount2 = 0
     
     @IBOutlet weak var planDetailsTableView: UITableView!
     @IBOutlet weak var dateAndTimeLabel: UILabel!
@@ -45,10 +45,56 @@ class PlanDetailsViewController: UIViewController, UITableViewDelegate, UITableV
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        fetchParticipants()
+        // タイマースタート
+        timer = Timer.scheduledTimer(timeInterval: 0.5, target: self, selector: #selector(fetchingPlan), userInfo: nil, repeats: true)
         
-        // タイマー1スタート
-        timer1 = Timer.scheduledTimer(timeInterval: 0.5, target: self, selector: #selector(update1), userInfo: nil, repeats: true)
+        fetchParticipants(
+            // 予定作成者のID取得後
+            completion1: {
+                // 予定作成者の名前を取得
+                self.fetchAuthorInfo()
+            },
+            
+            // 予定参加者のID取得後
+            completion2: {
+                // 参加者がいるとき
+                if self.participantIDs.isEmpty == false {
+                    // 名前に初期値（ID）を代入
+                    for i in 0...(self.participantIDs.count - 1) {
+                        self.participantNames.append(self.participantIDs[i])
+                        self.fetchParticipantSuccess.append(false)
+                    }
+                    // 名前を取得
+                    for i in 0...(self.participantIDs.count - 1) {
+                        self.fetchParticipantInfo(index: i)
+                    }
+                }
+                // 参加者がいないとき
+                else {
+                    self.fetchSuccess[1] = true
+                }
+            },
+            
+            // 予定参加候補者のID取得後
+            completion3: {
+                // 参加候補者がいるとき
+                if self.preparedParticipantIDs.isEmpty == false {
+                    // 名前に初期値（ID）を代入
+                    for i in 0...(self.preparedParticipantIDs.count - 1) {
+                        self.preparedParticipantNames.append(self.preparedParticipantIDs[i])
+                        self.fetchPreparedParticipantSuccess.append(false)
+                    }
+                    // 名前を取得
+                    for i in 0...(self.preparedParticipantIDs.count - 1) {
+                        self.fetchPreparedParticipantInfo(index: i)
+                    }
+                }
+                
+                // 参加候補者がいないとき
+                else {
+                    self.fetchSuccess[2] = true
+                }
+            })
         
         if let dateAndTime = self.dateAndTime {
             dateAndTimeLabel.text = dateAndTime
@@ -59,22 +105,19 @@ class PlanDetailsViewController: UIViewController, UITableViewDelegate, UITableV
         }
     }
     
+    
+    
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
-            
-        if let workingTimer1 = timer1 {
-            workingTimer1.invalidate()
-        }
-            
-        if let workingTimer2 = timer2 {
-            workingTimer2.invalidate()
-        }
     }
     
+    
+    
     func numberOfSections(in tableView: UITableView) -> Int {
-        // #warning Incomplete implementation, return the number of sections
         return 1
     }
+    
+    
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         
@@ -95,14 +138,18 @@ class PlanDetailsViewController: UIViewController, UITableViewDelegate, UITableV
         }
         
         else if indexPath.row == 1 {
+            
             let cell = tableView.dequeueReusableCell(withIdentifier: "PlanDetailParticipantCell", for: indexPath) as! PlanDetailParticipantCell
+            
             cell.textLabel?.text = planItem[indexPath.row]
             
             if participantIDs.count == 0 {
                 cell.hidden1()
                 cell.hidden2()
                 cell.hidden3()
-                cell.hiddenOthers()
+                cell.displayOthers()
+                
+                cell.othersLabel.text = "なし"
             }
             
             else if participantIDs.count == 1 {
@@ -151,7 +198,69 @@ class PlanDetailsViewController: UIViewController, UITableViewDelegate, UITableV
         }
         
         else if indexPath.row == 2 {
+            
+            let cell = tableView.dequeueReusableCell(withIdentifier: "PlanDetailParticipantCell", for: indexPath) as! PlanDetailParticipantCell
+            
+            cell.textLabel?.text = planItem[indexPath.row]
+            
+            if preparedParticipantNames.count == 0 {
+                cell.hidden1()
+                cell.hidden2()
+                cell.hidden3()
+                cell.displayOthers()
+                
+                cell.othersLabel.text = "なし"
+            }
+            
+            else if preparedParticipantNames.count == 1 {
+                cell.display1()
+                cell.hidden2()
+                cell.hidden3()
+                cell.hiddenOthers()
+                
+                cell.participant1Name.text = preparedParticipantNames[0]
+            }
+            
+            else if preparedParticipantNames.count == 2 {
+                cell.display1()
+                cell.display2()
+                cell.hidden3()
+                cell.hiddenOthers()
+                
+                cell.participant1Name.text = preparedParticipantNames[0]
+                cell.participant2Name.text = preparedParticipantNames[1]
+            }
+            
+            else if preparedParticipantNames.count == 3 {
+                cell.display1()
+                cell.display2()
+                cell.display3()
+                cell.hiddenOthers()
+                
+                cell.participant1Name.text = preparedParticipantNames[0]
+                cell.participant2Name.text = preparedParticipantNames[1]
+                cell.participant3Name.text = preparedParticipantNames[2]
+            }
+            
+            else {
+                cell.display1()
+                cell.display2()
+                cell.display3()
+                cell.displayOthers()
+                
+                cell.participant1Name.text = preparedParticipantNames[0]
+                cell.participant2Name.text = preparedParticipantNames[1]
+                cell.participant3Name.text = preparedParticipantNames[2]
+                cell.othersLabel.text = "他\(preparedParticipantNames.count - 3)人"
+            }
+            
+            return cell
+        }
+        
+        else if indexPath.row == 3 {
+            
             let cell = tableView.dequeueReusableCell(withIdentifier: "PlanDetailPlaceCell", for: indexPath)
+            
             cell.textLabel?.text = planItem[indexPath.row]
             
             if let place = self.place {
@@ -169,56 +278,63 @@ class PlanDetailsViewController: UIViewController, UITableViewDelegate, UITableV
         }
     }
     
+    
+    
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return planItem.count
     }
+    
+    
     
     // Cell の高さを68にする
     func tableView(_ table: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
         return 68.0
     }
+
     
-    @objc func update1() {
-        print("update1")
+    
+    @objc func fetchingPlan() {
+        print("Now fetching plan...")
         
-        // participantIDs配列がデータベースの参加者一覧と同じ要素数になったら
-        if participantIDs.count == checkCount1 {
-            // タイマー1を止める
-            if let workingTimer = timer1 {
+        timerCount += 0.5
+        
+        // 参加者取得に5秒以上かかったとき
+        if timerCount >= 5.0 {
+            
+            // タイマーを止める
+            if let workingTimer = timer {
                 workingTimer.invalidate()
             }
             
-            // 各々の参加者の情報を取得
-            var count = 0
-            while count < participantIDs.count {
-                if checkCount2 == count {
-                    fetchParticipantInfo(count)
-                    count += 1
-                }
-            }
-            
-            // タイマー2スタート
-            timer2 = Timer.scheduledTimer(timeInterval: 0.5, target: self, selector: #selector(update2), userInfo: nil, repeats: true)
+            let dialog = UIAlertController(title: "エラー", message: "予定を取得できませんでした。", preferredStyle: .alert)
+            // OKボタン
+            dialog.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+            // ダイアログを表示
+            dialog.present(dialog, animated: true, completion: nil)
         }
-    }
-    
-    @objc func update2() {
-        print("update2")
         
-        // 繰り返し処理のカウントがparticipantIDsと同じ数になったら（すべての参加者の情報を取得し終えたら）
-        if checkCount2 == participantIDs.count {
-            // タイマー2を止める
-            if let workingTimer = timer2 {
+        if fetchParticipantSuccess.isEmpty == false, fetchParticipantSuccess.contains(false) == false {
+            fetchSuccess[1] = true
+        }
+        
+        if fetchPreparedParticipantSuccess.isEmpty == false, fetchPreparedParticipantSuccess.contains(false) == false {
+            fetchSuccess[2] = true
+        }
+        
+        if fetchSuccess.contains(false) == false {
+            
+            // タイマーを止める
+            if let workingTimer = timer {
                 workingTimer.invalidate()
             }
             
-            // UI更新
+            print("Completed fetching Plan!")
             planDetailsTableView.reloadData()
         }
     }
         
     // データベースから作成者と参加者のIDを取得
-    func fetchParticipants() {
+    func fetchParticipants(completion1: @escaping () -> (), completion2: @escaping () -> (), completion3: @escaping () -> ()) {
         
         let recordID = CKRecord.ID(recordName: "planID-\(planID!)")
         
@@ -231,37 +347,28 @@ class PlanDetailsViewController: UIViewController, UITableViewDelegate, UITableV
             
             if let author = record?.value(forKey: "authorID") as? String {
                 self.authorID = author
+                completion1()
             }
             
             if let participantIDs = record?.value(forKey: "participantIDs") as? [String] {
-                
-                self.checkCount1 = participantIDs.count
                 
                 for participantID in participantIDs {
                     print("success!")
                     self.participantIDs.append(participantID)
                 }
+                completion2()
+            }
+            
+            if let preparedParticipantIDs = record?.value(forKey: "preparedParticipantIDs") as? [String] {
+                for preparedParticipantID in preparedParticipantIDs {
+                    self.preparedParticipantIDs.append(preparedParticipantID)
+                }
+                completion3()
             }
         })
     }
     
-    func fetchParticipantInfo(_ count: Int) {
-        
-        let recordID = CKRecord.ID(recordName: "accountID-\(participantIDs[count])")
-        
-        publicDatabase.fetch(withRecordID: recordID, completionHandler: {(record, error) in
-            
-            if let error = error {
-                print("\(count + 1)番目の参加者の情報取得エラー: \(error)")
-                return
-            }
-            
-            if let name = record?.value(forKey: "accountName") as? String {
-                self.participantNames.append(name)
-                self.checkCount2 = count + 1
-            }
-        })
-    }
+    
     
     func fetchAuthorInfo() {
         
@@ -271,11 +378,13 @@ class PlanDetailsViewController: UIViewController, UITableViewDelegate, UITableV
             
             if let error = error {
                 print("作成者の情報取得エラー: \(error)")
+                self.fetchSuccess[0] = false
                 return
             }
             
             if let name = record?.value(forKey: "accountName") as? String {
                 self.authorName = name
+                self.fetchSuccess[0] = true
             }
             
             if let bio = record?.value(forKey: "accountBio") as? String {
@@ -285,6 +394,50 @@ class PlanDetailsViewController: UIViewController, UITableViewDelegate, UITableV
             }
         })
     }
+    
+    
+    
+    func fetchParticipantInfo(index: Int) {
+        
+        let recordID = CKRecord.ID(recordName: "accountID-\(participantIDs[index])")
+        
+        publicDatabase.fetch(withRecordID: recordID, completionHandler: {(record, error) in
+            
+            if let error = error {
+                print("参加者〈\(self.participantIDs[index])〉の情報取得エラー: \(error)")
+                self.fetchParticipantSuccess[index] = false
+                return
+            }
+            
+            if let name = record?.value(forKey: "accountName") as? String {
+                self.participantNames[index] = name
+                self.fetchParticipantSuccess[index] = true
+            }
+        })
+    }
+    
+    
+    
+    func fetchPreparedParticipantInfo(index: Int) {
+        
+        let recordID = CKRecord.ID(recordName: "accountID-\(preparedParticipantIDs[index])")
+        
+        publicDatabase.fetch(withRecordID: recordID, completionHandler: {(record, error) in
+            
+            if let error = error {
+                print("参加候補者〈\(self.preparedParticipantIDs[index])〉の情報取得エラー: \(error)")
+                self.fetchParticipantSuccess[index] = false
+                return
+            }
+            
+            if let name = record?.value(forKey: "accountName") as? String {
+                self.preparedParticipantNames[index] = name
+                self.fetchPreparedParticipantSuccess[index] = true
+            }
+        })
+    }
+    
+    
     
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         
@@ -317,5 +470,7 @@ class PlanDetailsViewController: UIViewController, UITableViewDelegate, UITableV
             participantProfileVC.receiveBio = self.authorBio
         }
     }
+    
+    
     
 }
