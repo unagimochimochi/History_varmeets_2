@@ -315,15 +315,15 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         
         if let dateAndTime = addPlanVC.dateAndTime {
             
-            toSaveEstimatedTime = (addPlanVC.addPlanTable.cellForRow(at: IndexPath(row: 0, section: 0)) as? DateAndTimeCell)!.estimatedTime
+            toSaveEstimatedTime = addPlanVC.estimatedTime!
             
             if let selectedIndexPath = planTable.indexPathForSelectedRow {
                 dateAndTimes[selectedIndexPath.row] = dateAndTime
-                estimatedTimes[selectedIndexPath.row] = (addPlanVC.addPlanTable.cellForRow(at: IndexPath(row: 0, section: 0)) as? DateAndTimeCell)!.estimatedTime
+                estimatedTimes[selectedIndexPath.row] = toSaveEstimatedTime!
                 
             } else {
                 dateAndTimes.append(dateAndTime)
-                estimatedTimes.append((addPlanVC.addPlanTable.cellForRow(at: IndexPath(row: 0, section: 0)) as? DateAndTimeCell)!.estimatedTime)
+                estimatedTimes.append(toSaveEstimatedTime!)
             }
             
             userDefaults.set(dateAndTimes, forKey: "DateAndTimes")
@@ -350,16 +350,16 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         // 参加者
         var toSaveParticipantIDs = [String]()
         
-        if addPlanVC.participantNames.isEmpty == false {
+        if addPlanVC.everyoneNamesExceptAuthor.isEmpty == false {
             
             toSaveParticipantIDs = addPlanVC.participantIDs
             
-            let rep = addPlanVC.participantNames[0]
-            let number = addPlanVC.participantNames.count
+            let rep = addPlanVC.everyoneNamesExceptAuthor[0]
+            let number = addPlanVC.everyoneNamesExceptAuthor.count
             
             if let selectedIndexPath = planTable.indexPathForSelectedRow {
                 participantNames[selectedIndexPath.row] = rep
-                numberOfParticipants[selectedIndexPath.row] = number
+                numberOfParticipants[selectedIndexPath.row] = number + 1
                 
             } else {
                 participantNames.append(rep)
@@ -375,7 +375,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         var toSaveLocation: CLLocation?
         
         if let place = addPlanVC.place {
-            
+
             let lat = addPlanVC.lat
             let lon = addPlanVC.lon
             
@@ -427,7 +427,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                     }
                         
                     if toSaveParticipantIDs.isEmpty == false {
-                        record["participantIDs"] = toSaveParticipantIDs as [String]
+                        record["preparedParticipantIDs"] = toSaveParticipantIDs as [String]
                     }
                         
                     if let savePlaceName = toSavePlaceName {
@@ -1469,6 +1469,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             let planDetailsVC = segue.destination as! PlanDetailsViewController
             planDetailsVC.planID = myPlanIDs[(planTable.indexPathForSelectedRow?.row)!]
             planDetailsVC.dateAndTime = dateAndTimes[(planTable.indexPathForSelectedRow?.row)!]
+            planDetailsVC.estimatedTime = estimatedTimes[(planTable.indexPathForSelectedRow?.row)!]
             planDetailsVC.planTitle = planTitles[(planTable.indexPathForSelectedRow?.row)!]
             planDetailsVC.place = places[(planTable.indexPathForSelectedRow?.row)!]
             planDetailsVC.lonStr = lons[(planTable.indexPathForSelectedRow?.row)!]

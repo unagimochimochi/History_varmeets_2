@@ -14,7 +14,7 @@ class DateAndTimeCell: UITableViewCell {
     @IBOutlet weak var displayDateAndTimeTextField: UITextField!
     
     var datePicker: UIDatePicker = UIDatePicker()
-    var estimatedTime = Date()
+    var estimatedTime: Date?
     
     override func awakeFromNib() {
         super.awakeFromNib()
@@ -25,6 +25,7 @@ class DateAndTimeCell: UITableViewCell {
             
         // 決定バーの生成
         let toolbar = UIToolbar(frame: CGRect(x: 0, y: 0, width: UIScreen.main.bounds.width, height: 40))
+        toolbar.sizeToFit()
         let spaceItem = UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: self, action: nil)
         let doneItem = UIBarButtonItem(barButtonSystemItem: .done, target: self, action: #selector(done))
         toolbar.setItems([spaceItem, doneItem], animated: true)

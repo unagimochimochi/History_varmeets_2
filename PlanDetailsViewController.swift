@@ -16,6 +16,7 @@ class PlanDetailsViewController: UIViewController, UITableViewDelegate, UITableV
     
     var planTitle: String?
     var dateAndTime: String?
+    var estimatedTime: Date?
     
     var authorID: String?
     var authorName: String?
@@ -449,11 +450,27 @@ class PlanDetailsViewController: UIViewController, UITableViewDelegate, UITableV
             let addPlanVC = segue.destination as! AddPlanViewController
             addPlanVC.planTitle = self.planTitle
             addPlanVC.dateAndTime = self.dateAndTime
-            addPlanVC.participantIDs = self.participantIDs
-            addPlanVC.participantNames = self.participantNames
+            addPlanVC.estimatedTime = self.estimatedTime
             addPlanVC.place = self.place
             addPlanVC.lon = self.lonStr ?? ""
             addPlanVC.lat = self.latStr ?? ""
+            
+            addPlanVC.authorID = self.authorID
+            addPlanVC.authorName = self.authorName
+            addPlanVC.existingParticipantIDs = self.participantIDs
+            addPlanVC.existingPreparedParticipantIDs = self.preparedParticipantIDs
+            
+            var everyoneIDsExceptAuhor = self.participantIDs
+            for preparedParticipantID in self.preparedParticipantIDs {
+                everyoneIDsExceptAuhor.append(preparedParticipantID)
+            }
+            addPlanVC.everyoneIDsExceptAuthor = everyoneIDsExceptAuhor
+            
+            var everyoneNamesExceptAuthor = self.participantNames
+            for preparedParticipantName in self.preparedParticipantNames {
+                everyoneNamesExceptAuthor.append(preparedParticipantName)
+            }
+            addPlanVC.everyoneNamesExceptAuthor = everyoneNamesExceptAuthor
         }
 
         else if identifier == "toPlaceVC" {

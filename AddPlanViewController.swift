@@ -15,11 +15,17 @@ class AddPlanViewController: UIViewController, UITableViewDelegate, UITableViewD
     
     var planTitle: String?
     var dateAndTime: String!
-    var participantIDs = [String]()
-    var participantNames = [String]()
+    var authorID: String?
+    var authorName: String?
+    var everyoneIDsExceptAuthor = [String]()    // UITableViewに表示する参加者（編集時）と参加候補者
+    var everyoneNamesExceptAuthor = [String]()  // 同上
+    var participantIDs = [String]()            // データベースのpreparedParticipantIDsに入れる配列
     var place: String?
     var lon: String = ""
     var lat: String = ""
+    
+    var existingParticipantIDs = [String]()
+    var existingPreparedParticipantIDs = [String]()
     
     @IBOutlet weak var addPlanTable: UITableView!
     
@@ -33,7 +39,7 @@ class AddPlanViewController: UIViewController, UITableViewDelegate, UITableViewD
     // 保存ボタン
     @IBOutlet weak var saveButton: UIBarButtonItem!
     
-    var planItem = ["日時","参加者","場所"]
+    var planItem = ["日時", "予定作成者", "参加者", "場所"]
     
     var inputTimer: Timer!
     var inputCheck = [false, false, false, false]    // タイトル、日時、参加者、場所
@@ -48,6 +54,11 @@ class AddPlanViewController: UIViewController, UITableViewDelegate, UITableViewD
         
         if let planTitle = self.planTitle {
             self.planTitleTextField.text = planTitle
+        }
+        
+        if authorID == nil, authorName == nil {
+            authorID = myID
+            authorName = myName
         }
         
         // 保存ボタンをデフォルトで無効にする
@@ -65,29 +76,54 @@ class AddPlanViewController: UIViewController, UITableViewDelegate, UITableViewD
         if let workingTimer = inputTimer {
             workingTimer.invalidate()
         }
+        if let place = self.place {
+            print("場所: \(place)")
+        }
     }
     
     // 参加者を選択画面からの巻き戻し
     @IBAction func unwindToAddPlanVCFromSearchParticipantVC(sender: UIStoryboardSegue) {
+        
         if let sourceVC = sender.source as? SearchParticipantViewController {
+            
             // 日時をすでに出力していたとき
             if let dateAndTime = sourceVC.dateAndTime {
                 self.dateAndTime = dateAndTime
             }
             
-            var count = 0
+            // 場所をすでに出力していたとき
+            if let place = sourceVC.place {
+                self.place = place
+            }
             
-            while count < sourceVC.friendIDs.count {
-                if sourceVC.checkmark[count] == true {
-                    self.participantIDs.append(sourceVC.friendIDs[count])
-                    self.participantNames.append(sourceVC.friendNames[count])
+            for i in 0...(sourceVC.friendIDs.count - 1) {
+                // i番目の友だちを参加者に指定したとき
+                if sourceVC.checkmark[i] == true {
+                    self.everyoneIDsExceptAuthor.append(sourceVC.friendIDs[i])
+                    self.everyoneNamesExceptAuthor.append(sourceVC.friendNames[i])
+                    self.participantIDs.append(sourceVC.friendIDs[i])
                 }
-                count += 1
             }
             
-            if count == sourceVC.friendIDs.count {
-                addPlanTable.reloadData()
+            for i in 0...(participantIDs.count - 1) {
+                // i番目の参加者がすでに承認済みだったとき
+                if existingParticipantIDs.contains(participantIDs[i]) {
+                    participantIDs[i] = "NO"
+                }
             }
+            
+            if let i = participantIDs.index(of: authorID!) {
+                participantIDs[i] = "NO"
+            }
+            
+            //  NOを取り除く
+            while participantIDs.contains("NO") {
+                if let index = participantIDs.index(of: "NO") {
+                    self.participantIDs.remove(at: index)
+                }
+            }
+            
+            addPlanTable.reloadData()
         }
     }
     
@@ -129,7 +165,7 @@ class AddPlanViewController: UIViewController, UITableViewDelegate, UITableViewD
         }
         
         // 参加者（2）
-        if participantIDs.isEmpty == false {
+        if everyoneIDsExceptAuthor.isEmpty == false {
             inputCheck[2] = true
         } else {
             inputCheck[2] = false
@@ -157,55 +193,84 @@ class AddPlanViewController: UIViewController, UITableViewDelegate, UITableViewD
     func tableView(_ tableView: UITableView, cellForRowAt indexPath:IndexPath) -> UITableViewCell {
         
         if indexPath.row == 0 {
-            let cell = tableView.dequeueReusableCell(withIdentifier: "DateAndTimeCell", for:indexPath) as! DateAndTimeCell
-            cell.textLabel?.text = planItem[indexPath.row]
-            cell.displayDateAndTimeTextField.text = dateAndTime
             
-            estimatedTime = cell.estimatedTime    // 入力チェック用
+            let cell = tableView.dequeueReusableCell(withIdentifier: "DateAndTimeCell", for:indexPath) as! DateAndTimeCell
+            
+            cell.textLabel?.text = planItem[indexPath.row]
+            
+            cell.displayDateAndTimeTextField.delegate = self
+            
+            if let usedDatePicker = cell.estimatedTime {
+                print(usedDatePicker)
+                estimatedTime = usedDatePicker    // 入力チェック用
+            } else {
+                // UIDatePickerを使ったときのUITextFieldへの出力はDateAndTimeCell.Swiftに記載
+                cell.displayDateAndTimeTextField.text = dateAndTime
+            }
             
             return cell
             
         }
         
         else if indexPath.row == 1 {
-            let cell = tableView.dequeueReusableCell(withIdentifier: "ParticipantCell", for:indexPath) as! ParticipantCell
+            
+            let cell = tableView.dequeueReusableCell(withIdentifier: "AuthorCell", for: indexPath)
+            
             cell.textLabel?.text = planItem[indexPath.row]
             
-            if participantIDs.count == 0 {
+            let icon = cell.viewWithTag(1) as! UIButton
+            icon.layer.borderColor = UIColor.gray.cgColor // 枠線の色
+            icon.layer.borderWidth = 1 // 枠線の太さ
+            icon.layer.cornerRadius = icon.bounds.width / 2 // 丸くする
+            icon.layer.masksToBounds = true // 丸の外側を消す
+            
+            let authorNameLabel = cell.viewWithTag(2) as! UILabel
+            authorNameLabel.text = authorName
+            
+            return cell
+        }
+        
+        else if indexPath.row == 2 {
+            
+            let cell = tableView.dequeueReusableCell(withIdentifier: "ParticipantCell", for: indexPath) as! ParticipantCell
+            
+            cell.textLabel?.text = planItem[indexPath.row]
+            
+            if everyoneNamesExceptAuthor.count == 0 {
                 cell.hidden1()
                 cell.hidden2()
                 cell.hidden3()
                 cell.hiddenOthers()
             }
             
-            else if participantIDs.count == 1 {
+            else if everyoneNamesExceptAuthor.count == 1 {
                 cell.display1()
                 cell.hidden2()
                 cell.hidden3()
                 cell.hiddenOthers()
                 
-                cell.participant1Name.text = participantNames[0]
+                cell.participant1Name.text = everyoneNamesExceptAuthor[0]
             }
             
-            else if participantIDs.count == 2 {
+            else if everyoneNamesExceptAuthor.count == 2 {
                 cell.display1()
                 cell.display2()
                 cell.hidden3()
                 cell.hiddenOthers()
                 
-                cell.participant1Name.text = participantNames[0]
-                cell.participant2Name.text = participantNames[1]
+                cell.participant1Name.text = everyoneNamesExceptAuthor[0]
+                cell.participant2Name.text = everyoneNamesExceptAuthor[1]
             }
             
-            else if participantIDs.count == 3 {
+            else if everyoneNamesExceptAuthor.count == 3 {
                 cell.display1()
                 cell.display2()
                 cell.display3()
                 cell.hiddenOthers()
                 
-                cell.participant1Name.text = participantNames[0]
-                cell.participant2Name.text = participantNames[1]
-                cell.participant3Name.text = participantNames[2]
+                cell.participant1Name.text = everyoneNamesExceptAuthor[0]
+                cell.participant2Name.text = everyoneNamesExceptAuthor[1]
+                cell.participant3Name.text = everyoneNamesExceptAuthor[2]
             }
             
             else {
@@ -214,18 +279,18 @@ class AddPlanViewController: UIViewController, UITableViewDelegate, UITableViewD
                 cell.display3()
                 cell.displayOthers()
                 
-                cell.participant1Name.text = participantNames[0]
-                cell.participant2Name.text = participantNames[1]
-                cell.participant3Name.text = participantNames[2]
-                cell.othersLabel.text = "他\(participantNames.count - 3)人"
+                cell.participant1Name.text = everyoneNamesExceptAuthor[0]
+                cell.participant2Name.text = everyoneNamesExceptAuthor[1]
+                cell.participant3Name.text = everyoneNamesExceptAuthor[2]
+                cell.othersLabel.text = "他\(everyoneNamesExceptAuthor.count - 3)人"
             }
             
             return cell
-            
         }
         
         else {
             let cell = tableView.dequeueReusableCell(withIdentifier: "PlaceCell", for:indexPath) as! PlaceCell
+            
             cell.textLabel?.text = planItem[indexPath.row]
 
             if let place = self.place {
@@ -261,6 +326,11 @@ class AddPlanViewController: UIViewController, UITableViewDelegate, UITableViewD
         return true
     }
     
+    func textFieldDidEndEditing(_ textField: UITextField, reason: UITextField.DidEndEditingReason) {
+        // DateAndTimeCellのUITextField編集終了時にUITableViewを更新することで、cellForRowAtのestimatedTime代入をおこなう（めんどくさ！）
+        addPlanTable.reloadData()
+    }
+    
     override func prepare(for segue: UIStoryboardSegue, sender: Any!) {
         
         if let identifier = segue.identifier {
@@ -269,25 +339,38 @@ class AddPlanViewController: UIViewController, UITableViewDelegate, UITableViewD
                 let searchPlaceVC = segue.destination as! SearchPlaceViewController
                 self.dateAndTime = (addPlanTable.cellForRow(at: IndexPath(row: 0, section: 0)) as? DateAndTimeCell)?.displayDateAndTimeTextField.text ?? ""
                 searchPlaceVC.dateAndTime = self.dateAndTime
+                searchPlaceVC.place = self.place
+                searchPlaceVC.lat = self.lat
+                searchPlaceVC.lon = self.lon
             }
             
             if identifier == "toSearchParticipantVC" {
                 let searchParticipantVC = segue.destination as! SearchParticipantViewController
                 self.dateAndTime = (addPlanTable.cellForRow(at: IndexPath(row: 0, section: 0)) as? DateAndTimeCell)?.displayDateAndTimeTextField.text ?? ""
                 searchParticipantVC.dateAndTime = self.dateAndTime
+                searchParticipantVC.place = self.place
                 
                 // すでに選択済みだった際に重複してしまうため取り除く
+                everyoneIDsExceptAuthor.removeAll()
+                everyoneNamesExceptAuthor.removeAll()
                 participantIDs.removeAll()
-                participantNames.removeAll()
+                
+                // 既存の予定作成者・参加者・参加予定者
+                var everyoneIDs = existingParticipantIDs
+                for existingPreparedParticipantID in existingPreparedParticipantIDs {
+                    everyoneIDs.append(existingPreparedParticipantID)
+                }
+                everyoneIDs.append(authorID!)
+                searchParticipantVC.receivedEveryoneIDs = everyoneIDs
             }
         }
         
         guard let button = sender as? UIBarButtonItem, button === self.saveButton else {
             return
         }
-        self.planTitle = self.planTitleTextField.text ?? ""
-        self.dateAndTime = (addPlanTable.cellForRow(at: IndexPath(row: 0, section: 0)) as? DateAndTimeCell)?.displayDateAndTimeTextField.text ?? ""
-        self.place = (addPlanTable.cellForRow(at: IndexPath(row: 2, section: 0)) as? PlaceCell)?.displayPlaceTextField.text ?? ""
+        self.planTitle = self.planTitleTextField.text!
+        self.dateAndTime = (addPlanTable.cellForRow(at: IndexPath(row: 0, section: 0)) as? DateAndTimeCell)?.displayDateAndTimeTextField.text!
+        self.place = (addPlanTable.cellForRow(at: IndexPath(row: 2, section: 0)) as? PlaceCell)?.displayPlaceTextField.text!
     }
     
 }

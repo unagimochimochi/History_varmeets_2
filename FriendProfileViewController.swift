@@ -46,7 +46,8 @@ class FriendProfileViewController: UIViewController{
         if idetifier == "FriendProfileVCtoAddPlanVC" {
             let addPlanVC = segue.destination as! AddPlanViewController
             addPlanVC.participantIDs.append(receiveID)
-            addPlanVC.participantNames.append(receiveName)
+            addPlanVC.everyoneIDsExceptAuthor.append(receiveID)
+            addPlanVC.everyoneNamesExceptAuthor.append(receiveName)
         }
     }
 }

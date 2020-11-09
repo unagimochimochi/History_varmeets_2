@@ -4,6 +4,7 @@
 //
 //  Created by 持田侑菜 on 2020/10/02.
 //
+//  セルの選択無効 https://qiita.com/takashings/items/36b820f09fb19edd7556
 
 import UIKit
 import CloudKit
@@ -21,10 +22,13 @@ class SearchParticipantViewController: UIViewController, UITableViewDelegate, UI
     var friendIDs = [String]()
     var friendNames = [String]()
     
+    var receivedEveryoneIDs = [String]()    // 既存の予定作成者と参加者と参加予定者ごっちゃ（予定編集時）
+    
     var checkmark = [Bool]()
     
-    // AddPlanVCで日時が出力されている場合、一時的に保存
+    // AddPlanVCで出力されている場合、一時的に保存
     var dateAndTime: String?
+    var place: String?
     
     
     
@@ -39,6 +43,8 @@ class SearchParticipantViewController: UIViewController, UITableViewDelegate, UI
         
         friendsTableView.delegate = self
         friendsTableView.dataSource = self
+        
+        print(receivedEveryoneIDs)
     }
     
     
@@ -122,7 +128,7 @@ class SearchParticipantViewController: UIViewController, UITableViewDelegate, UI
     
     
     @objc func fetchingFriendInfo() {
-        print("Now fetching friend's names")
+        print("Now fetching friend's names...")
         
         timerCount += 0.5
         
@@ -133,7 +139,7 @@ class SearchParticipantViewController: UIViewController, UITableViewDelegate, UI
                 workingTimer.invalidate()
             }
             
-            let dialog = UIAlertController(title: "エラー", message: "予定を取得できませんでした。", preferredStyle: .alert)
+            let dialog = UIAlertController(title: "エラー", message: "友だちを取得できませんでした。", preferredStyle: .alert)
             
             // OKボタン
             dialog.addAction(UIAlertAction(title: "OK", style: .default, handler: { action in
@@ -150,6 +156,17 @@ class SearchParticipantViewController: UIViewController, UITableViewDelegate, UI
         
         else if fetchingCheck.contains(false) == false {
             print("Completed fetching friend's names!")
+            
+            if let index = receivedEveryoneIDs.index(of: myID!) {
+                receivedEveryoneIDs.remove(at: index)
+            }
+            
+            // すでに参加者に登録している人はチェックをつける
+            for existingID in receivedEveryoneIDs {
+                if let index = friendIDs.index(of: existingID) {
+                    checkmark[index] = true
+                }
+            }
             
             if let workingTimer = timer {
                 workingTimer.invalidate()
@@ -190,10 +207,39 @@ class SearchParticipantViewController: UIViewController, UITableViewDelegate, UI
         let idLabel = cell.viewWithTag(3) as! UILabel
         idLabel.text = friendIDs[indexPath.row]
         
+        // すでに参加者に登録している人のセルは選択できないようにする
+        
+        for existingID in receivedEveryoneIDs {
+            if let index = friendIDs.index(of: existingID) {
+                if indexPath.row == index {
+                    cell.selectionStyle = .none
+                    print("\(index)番目タップ無効")
+                }
+            }
+        }
+        
         return cell
     }
     
     
+    
+    func tableView(_ tableView: UITableView, willSelectRowAt indexPath: IndexPath) -> IndexPath? {
+        
+        for existingID in receivedEveryoneIDs {
+            
+            if let index = friendIDs.index(of: existingID) {
+                
+                switch indexPath.row {
+                case index:
+                    return nil
+                default:
+                    return indexPath
+                }
+            }
+        }
+        
+        return indexPath
+    }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         
