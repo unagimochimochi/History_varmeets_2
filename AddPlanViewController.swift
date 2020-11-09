@@ -86,14 +86,21 @@ class AddPlanViewController: UIViewController, UITableViewDelegate, UITableViewD
         
         if let sourceVC = sender.source as? SearchParticipantViewController {
             
+            // 予定IDがあるとき（編集時）
+            if let planID = sourceVC.planID {
+                self.planID = planID
+            }
+            
             // 日時をすでに出力していたとき
             if let dateAndTime = sourceVC.dateAndTime {
                 self.dateAndTime = dateAndTime
             }
             
             // 場所をすでに出力していたとき
-            if let place = sourceVC.place {
+            if let place = sourceVC.place, let lat = sourceVC.lat, let lon = sourceVC.lon {
                 self.place = place
+                self.lat = lat
+                self.lon = lon
             }
             
             for i in 0...(sourceVC.friendIDs.count - 1) {
@@ -129,7 +136,14 @@ class AddPlanViewController: UIViewController, UITableViewDelegate, UITableViewD
     
     // 場所を選択画面からの巻き戻し
     @IBAction func unwindToAddPlanVCFromSearchPlaceVC(sender: UIStoryboardSegue) {
+        
         if let sourceVC = sender.source as? SearchPlaceViewController {
+            
+            // 予定IDがあるとき（編集時）
+            if let planID = sourceVC.planID {
+                self.planID = planID
+            }
+            
             // 日時をすでに出力していたとき
             if let dateAndTime = sourceVC.dateAndTime {
                 self.dateAndTime = dateAndTime
@@ -337,6 +351,7 @@ class AddPlanViewController: UIViewController, UITableViewDelegate, UITableViewD
             
             if identifier == "toSearchPlaceVC" {
                 let searchPlaceVC = segue.destination as! SearchPlaceViewController
+                searchPlaceVC.planID = self.planID
                 self.dateAndTime = (addPlanTable.cellForRow(at: IndexPath(row: 0, section: 0)) as? DateAndTimeCell)?.displayDateAndTimeTextField.text ?? ""
                 searchPlaceVC.dateAndTime = self.dateAndTime
                 searchPlaceVC.place = self.place
@@ -346,9 +361,12 @@ class AddPlanViewController: UIViewController, UITableViewDelegate, UITableViewD
             
             if identifier == "toSearchParticipantVC" {
                 let searchParticipantVC = segue.destination as! SearchParticipantViewController
+                searchParticipantVC.planID = self.planID
                 self.dateAndTime = (addPlanTable.cellForRow(at: IndexPath(row: 0, section: 0)) as? DateAndTimeCell)?.displayDateAndTimeTextField.text ?? ""
                 searchParticipantVC.dateAndTime = self.dateAndTime
                 searchParticipantVC.place = self.place
+                searchParticipantVC.lat = self.lat
+                searchParticipantVC.lon = self.lon
                 
                 // すでに選択済みだった際に重複してしまうため取り除く
                 everyoneIDsExceptAuthor.removeAll()

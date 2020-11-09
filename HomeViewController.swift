@@ -347,7 +347,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             userDefaults.set(planTitles, forKey: "PlanTitles")
         }
         
-        // 参加者
+        // 参加者（参加候補者です！ややこしい）
         var toSaveParticipantIDs = [String]()
         
         if addPlanVC.everyoneNamesExceptAuthor.isEmpty == false {
@@ -449,6 +449,46 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                     })
                 }
             })
+            
+            // 新たに追加した参加候補者
+            // まず新旧参加候補者を代入
+            var newParticipantIDs = toSaveParticipantIDs
+            // 旧参加者・旧参加候補者
+            var existingIDs = addPlanVC.existingParticipantIDs
+            for existingPreparedParticipantID in addPlanVC.existingPreparedParticipantIDs {
+                existingIDs.append(existingPreparedParticipantID)
+            }
+            
+            for i in 0...(existingIDs.count - 1) {
+                if let index = newParticipantIDs.index(of: existingIDs[i]) {
+                    newParticipantIDs[index] = "NO"
+                }
+            }
+            
+            while newParticipantIDs.contains("NO") {
+                if let index = newParticipantIDs.index(of: "NO") {
+                    newParticipantIDs.remove(at: index)
+                }
+            }
+            
+            if newParticipantIDs.isEmpty == false {
+                
+                // 人数分の空の配列を入れる
+                // planIDsOnDatabase = [[String](), [String](), ...]
+                for _ in 0...(newParticipantIDs.count - 1) {
+                    planIDsOnDatabase.append([String]())
+                }
+                
+                for i in 0...(newParticipantIDs.count - 1) {
+                    fetchNewParticipantsPlanIDs(accountID: newParticipantIDs[i], index: i, completion: {
+                        // データベースの予定ID取得後に編集した予定のIDを追加
+                        self.planIDsOnDatabase[i].append(addPlanVC.planID!)
+                        
+                        // 次の処理
+                        self.addNewParticipantsPlanIDToDatabase(accountID: newParticipantIDs[i], index: i)
+                    })
+                }
+            }
         }
         
         // 新たに予定を作成したとき
@@ -1098,6 +1138,34 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         })
     }
     
+    // 予定編集時
+    func fetchNewParticipantsPlanIDs(accountID: String, index: Int, completion: @escaping () -> ()) {
+        print("\(accountID)の予定一覧取得開始")
+        
+        let recordID = CKRecord.ID(recordName: "accountID-\(accountID)")
+        
+        publicDatabase.fetch(withRecordID: recordID, completionHandler: {(record, error) in
+            
+            if let error = error {
+                print("\(accountID)の予定取得エラー: \(error)")
+                return
+            }
+            
+            if let preparedPlanIDs = record?.value(forKey: "preparedPlanIDs") as? [String] {
+                
+                for preparedPlanID in preparedPlanIDs {
+                    self.planIDsOnDatabase[index].append(preparedPlanID)
+                }
+            } else {
+                print("\(accountID)のデータベースの予定予備軍なし")
+            }
+            
+            print("\(accountID)の予定一覧取得完了")
+            completion()
+        })
+    }
+    
+    // 予定作成時
     func addPlanIDToDatabase(accountID: String, index: Int, newPlanID: String) {
         print("\(accountID)の予定一覧保存開始")
         
@@ -1124,6 +1192,37 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                 else {
                     record["preparedPlanIDs"] = self.planIDsOnDatabase[index] as [String]
                 }
+                
+                self.publicDatabase.save(record, completionHandler: {(record, error) in
+                    
+                    if let error = error {
+                        print("\(accountID)のデータベースの予定ID追加エラー2: \(error)")
+                        return
+                    }
+                    print("\(accountID)のデータベースの予定ID追加成功")
+                })
+            }
+        })
+    }
+    
+    // 予定編集時
+    func addNewParticipantsPlanIDToDatabase(accountID: String, index: Int) {
+        print("\(accountID)の予定一覧保存開始")
+        
+        // 検索条件を作成
+        let predicate = NSPredicate(format: "accountID == %@", argumentArray: [accountID])
+        let query = CKQuery(recordType: "Accounts", predicate: predicate)
+        
+        self.publicDatabase.perform(query, inZoneWith: nil, completionHandler: {(records, error) in
+            
+            if let error = error {
+                print("\(accountID)のデータベースの予定ID追加エラー1: \(error)")
+                return
+            }
+            
+            for record in records! {
+                
+                record["preparedPlanIDs"] = self.planIDsOnDatabase[index] as [String]
                 
                 self.publicDatabase.save(record, completionHandler: {(record, error) in
                     

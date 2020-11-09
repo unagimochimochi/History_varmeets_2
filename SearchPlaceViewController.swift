@@ -25,6 +25,7 @@ class SearchPlaceViewController: UIViewController, UISearchBarDelegate, UITableV
     var lonArray = [String]()
     
     // AddPlanVCで日時が出力されている場合、一時的に保存
+    var planID: String?
     var dateAndTime: String?
     
     @IBAction func cancelButton(_ sender: Any) {

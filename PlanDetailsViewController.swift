@@ -448,6 +448,7 @@ class PlanDetailsViewController: UIViewController, UITableViewDelegate, UITableV
         
         if identifier == "editPlan" {
             let addPlanVC = segue.destination as! AddPlanViewController
+            addPlanVC.planID = self.planID
             addPlanVC.planTitle = self.planTitle
             addPlanVC.dateAndTime = self.dateAndTime
             addPlanVC.estimatedTime = self.estimatedTime

@@ -27,8 +27,11 @@ class SearchParticipantViewController: UIViewController, UITableViewDelegate, UI
     var checkmark = [Bool]()
     
     // AddPlanVCで出力されている場合、一時的に保存
+    var planID: String?
     var dateAndTime: String?
     var place: String?
+    var lat: String?
+    var lon: String?
     
     
     
