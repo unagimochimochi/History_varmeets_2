@@ -13,18 +13,21 @@ var favAddresses = [String]()
 var favLats = [Double]()
 var favLons = [Double]()
 
-class FavViewController: UIViewController, UISearchBarDelegate, UITableViewDelegate, UITableViewDataSource {
+class FavViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
     
-    @IBOutlet weak var favSearchBar: UISearchBar!
     @IBOutlet weak var favTableView: UITableView!
     
     let publicDatabase = CKContainer.default().publicCloudDatabase
     
     var favLocations = [CLLocation]()    // データベース保存用
     
+    
+    
     override func viewDidLoad() {
         super.viewDidLoad()
     }
+    
+    
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(true)
@@ -37,9 +40,13 @@ class FavViewController: UIViewController, UISearchBarDelegate, UITableViewDeleg
         }
     }
     
+    
+    
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return favPlaces.count
     }
+    
+    
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "FavCell", for:indexPath)
@@ -55,10 +62,14 @@ class FavViewController: UIViewController, UISearchBarDelegate, UITableViewDeleg
         return cell
     }
     
+    
+    
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         // セルの選択を解除
         tableView.deselectRow(at: indexPath, animated: true)
     }
+    
+    
     
     func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
         
@@ -67,6 +78,8 @@ class FavViewController: UIViewController, UISearchBarDelegate, UITableViewDeleg
             tableView.deleteRows(at: [indexPath], with: .fade)
         }
     }
+    
+    
     
     func remove(index: Int) {
         
@@ -88,7 +101,7 @@ class FavViewController: UIViewController, UISearchBarDelegate, UITableViewDeleg
         let predicate = NSPredicate(format: "accountID == %@", argumentArray: [myID!])
         let query = CKQuery(recordType: "Accounts", predicate: predicate)
                 
-        // データベースの予定一覧からIDを削除
+        // データベースの予定一覧からお気に入りを削除
         publicDatabase.perform(query, inZoneWith: nil, completionHandler: {(records, error) in
                     
             if let error = error {
@@ -112,6 +125,8 @@ class FavViewController: UIViewController, UISearchBarDelegate, UITableViewDeleg
             }
         })
     }
+    
+    
     
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         

@@ -213,7 +213,7 @@ class ApprovePlanViewController: UIViewController, UITableViewDelegate, UITableV
         
         timerCount += 0.5
         
-        // 予定の詳細に5秒以上かかったとき
+        // 予定の詳細取得に5秒以上かかったとき
         if timerCount >= 5.0 {
             
             if let workingTimer = timer {
@@ -250,7 +250,7 @@ class ApprovePlanViewController: UIViewController, UITableViewDelegate, UITableV
     func fetchPlanDetails(completion: @escaping () -> ()) {
         
         let recordID = CKRecord.ID(recordName: "planID-\(planID!)")
-        
+        print(planID!)
         publicDatabase.fetch(withRecordID: recordID, completionHandler: {(record, error) in
             
             if let error = error {

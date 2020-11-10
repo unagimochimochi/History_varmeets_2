@@ -76,9 +76,6 @@ class AddPlanViewController: UIViewController, UITableViewDelegate, UITableViewD
         if let workingTimer = inputTimer {
             workingTimer.invalidate()
         }
-        if let place = self.place {
-            print("場所: \(place)")
-        }
     }
     
     // 参加者を選択画面からの巻き戻し
@@ -150,13 +147,12 @@ class AddPlanViewController: UIViewController, UITableViewDelegate, UITableViewD
             }
             
             if let place = sourceVC.place, let lat = sourceVC.lat, let lon = sourceVC.lon {
+                print("巻き戻し: \(place)")
                 self.place = place
                 self.lat = lat
                 self.lon = lon
             }
         }
-        
-        addPlanTable.reloadData()
     }
     
     @objc func completedInputing() {
@@ -215,7 +211,6 @@ class AddPlanViewController: UIViewController, UITableViewDelegate, UITableViewD
             cell.displayDateAndTimeTextField.delegate = self
             
             if let usedDatePicker = cell.estimatedTime {
-                print(usedDatePicker)
                 estimatedTime = usedDatePicker    // 入力チェック用
             } else {
                 // UIDatePickerを使ったときのUITextFieldへの出力はDateAndTimeCell.Swiftに記載
@@ -354,9 +349,6 @@ class AddPlanViewController: UIViewController, UITableViewDelegate, UITableViewD
                 searchPlaceVC.planID = self.planID
                 self.dateAndTime = (addPlanTable.cellForRow(at: IndexPath(row: 0, section: 0)) as? DateAndTimeCell)?.displayDateAndTimeTextField.text ?? ""
                 searchPlaceVC.dateAndTime = self.dateAndTime
-                searchPlaceVC.place = self.place
-                searchPlaceVC.lat = self.lat
-                searchPlaceVC.lon = self.lon
             }
             
             if identifier == "toSearchParticipantVC" {
@@ -387,8 +379,6 @@ class AddPlanViewController: UIViewController, UITableViewDelegate, UITableViewD
             return
         }
         self.planTitle = self.planTitleTextField.text!
-        self.dateAndTime = (addPlanTable.cellForRow(at: IndexPath(row: 0, section: 0)) as? DateAndTimeCell)?.displayDateAndTimeTextField.text!
-        self.place = (addPlanTable.cellForRow(at: IndexPath(row: 2, section: 0)) as? PlaceCell)?.displayPlaceTextField.text!
     }
     
 }

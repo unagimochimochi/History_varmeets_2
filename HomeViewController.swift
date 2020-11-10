@@ -216,7 +216,6 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                 
                 if let error = error {
                     print("予定承認（Accounts）エラー1: \(error)")
-                    self.alert(title: "予定承認（Accounts）エラー1", message: "予定を承認できませんでした。")
                     return
                 }
                 
@@ -247,7 +246,6 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                         
                         if let error = error {
                             print("予定承認（Accounts）エラー2: \(error)")
-                            self.alert(title: "予定承認（Accounts）エラー2", message: "予定を承認できませんでした。")
                             return
                         }
                         print("予定承認（Accounts）成功")
@@ -262,7 +260,6 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                 
                 if let error = error {
                     print("予定承認（Plans）エラー1: \(error)")
-                    self.alert(title: "予定承認（Plans）エラー1", message: "予定を承認できませんでした。")
                     return
                 }
                 
@@ -288,7 +285,6 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                         
                         if let error = error {
                             print("予定承認（Plans）エラー2: \(error)")
-                            self.alert(title: "予定承認（Plans）エラー2", message: "予定を承認できませんでした。")
                             return
                         }
                         print("予定承認（Plans）成功")

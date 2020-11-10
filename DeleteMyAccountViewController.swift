@@ -33,6 +33,10 @@ class DeleteMyAccountViewController: UIViewController, UITextFieldDelegate {
         passwordTextField.delegate = self
     }
     
+    @IBAction func cancel(_ sender: Any) {
+        self.dismiss(animated: true, completion: nil)
+    }
+    
     // 入力中は続行ボタンを無効にする
     func textFieldDidBeginEditing(_ textField: UITextField) {
         continueButton.isEnabled = false
@@ -148,13 +152,15 @@ class DeleteMyAccountViewController: UIViewController, UITextFieldDelegate {
                 dialog.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
                 // ダイアログを表示
                 self.present(dialog, animated: true, completion: nil)
-                    
-                for i in 0...(self.fetchedFriendIDs.count - 1) {
-                    // 友だちの友だち一覧から自分のIDを削除（メンバ変数）
-                    self.deleteMyIDByFriendFriendIDs(count: i, completion: {
-                        // 友だちの友だち一覧を更新
-                        self.reloadFriendFriendIDs(count: i)
-                    })
+                
+                if fetchedFriendIDs.isEmpty == false {
+                    for i in 0...(self.fetchedFriendIDs.count - 1) {
+                        // 友だちの友だち一覧から自分のIDを削除（メンバ変数）
+                        self.deleteMyIDByFriendFriendIDs(count: i, completion: {
+                            // 友だちの友だち一覧を更新
+                            self.reloadFriendFriendIDs(count: i)
+                        })
+                    }
                 }
                 
                 // アカウントリストから自分のIDを削除
@@ -219,6 +225,8 @@ class DeleteMyAccountViewController: UIViewController, UITextFieldDelegate {
                 for friendID in friendIDs {
                     self.fetchedFriendIDs.append(friendID)
                 }
+                completion()
+            } else {
                 completion()
             }
         })
